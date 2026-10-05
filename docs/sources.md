@@ -12,7 +12,8 @@ Mỗi nguồn một mục. Người viết connector giữ mục của nguồn m
 | URL / API | |
 | Giấy phép | |
 | Tần suất cập nhật | |
-| Cách lấy | API chính thức / file tải về / scrape (phải tôn trọng `robots.txt`) |
+| Cách lấy (live) | API chính thức / file tải về / scrape (phải tôn trọng `robots.txt`, dùng `http_client.get()`) |
+| Đường mock | `mock_format = "json"` (API: override `render_api_page()` đúng hình dạng response) hoặc `"html"` (trang web) |
 | Khóa định danh bản ghi | cột nào tạo `_row_hash` |
 | Phạm vi thời gian | |
 | Rủi ro đã biết | |
@@ -28,7 +29,9 @@ Data dictionary: bảng cột | kiểu ở nguồn | ý nghĩa | ví dụ.
 | `source_name` | `source_demo` |
 | Connector | [`ingestion/sources/source_demo.py`](../ingestion/sources/source_demo.py) |
 | Bảng raw | `raw.source_demo_records` (migration `003`) |
-| URL / API | không có — sinh trong code, `random.Random(seed=20261005)` |
+| URL / API | không có — giả lập API JSON phân trang trong process, `random.Random(seed=20261005)` |
+| Hình dạng response | `{"count", "page", "page_size", "results": [...]}`, 500 bản ghi/trang |
+| Đường mock | `mock_format = "json"`, `mock_page_size = 500` → 10 request tới `/api/source_demo` |
 | Giấy phép | nội bộ nhóm |
 | Tần suất | chạy theo yêu cầu |
 | Khóa định danh | md5 của toàn bộ bản ghi (mặc định của `Connector.row_hash`) |

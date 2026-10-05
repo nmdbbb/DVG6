@@ -343,3 +343,17 @@ tr.selected {
 .error {
   color: var(--critical-ink);
 }
+
+/* --- Đường lấy dữ liệu: chữ + viền, không chỉ dựa vào màu --- */
+.mode {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--axis);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.mode-mock {
+  border-style: dashed;
+}

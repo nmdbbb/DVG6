@@ -23,6 +23,7 @@ class Source(BaseModel):
 class Batch(BaseModel):
     batch_id: UUID
     source_name: str
+    source_mode: str
     started_at: datetime
     finished_at: datetime | None
     status: str

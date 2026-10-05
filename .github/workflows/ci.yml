@@ -69,6 +69,8 @@ jobs:
           dupes=$(docker compose exec -T db psql -U qtdl -d qtdl -tAc \
             "select count(*) - count(distinct _row_hash) from raw.source_demo_records")
           test "$dupes" -eq 0
+      - name: Đường dự phòng — lô live và lô mock phải khớp số dòng và _row_hash
+        run: make mock-check
       - name: make transform
         run: make transform
       - name: make quality (exit 1 nếu check error fail)

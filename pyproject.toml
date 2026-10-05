@@ -46,4 +46,4 @@ target-version = ["py311"]
 extend-exclude = "transform/target|web"
 
 [tool.pytest.ini_options]
-testpaths = ["api/tests", "ingestion/tests"]
+testpaths = ["api/tests", "ingestion/tests", "mock_server/tests"]

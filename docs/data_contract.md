@@ -52,9 +52,19 @@ Ràng buộc "không được NULL" phải có test `not_null` trong `schema.yml
 
 ## 6. Điều kiện merge pull request
 
-1. CI xanh: `lint` và `pipeline`.
-2. PR chạm `db/` hoặc `transform/models/core/` có Data Architect duyệt.
-3. PR chạm `analysis/`, `quality/` hoặc kết luận thống kê có Analysis & Quality Owner duyệt.
-4. PR làm sạch dữ liệu kèm dòng mới trong `cleaning_log.md`.
-5. Quyết định có đánh đổi kèm dòng mới trong `decision_log.md`.
-6. Migration mới là file mới; không sửa file đã merge (CI bắt checksum lệch).
+| PR chạm gì | Ai duyệt | Phải kèm gì |
+|---|---|---|
+| `db/` hoặc `transform/models/core/` | Data Architect | Dòng mới trong `decision_log.md` nếu có đánh đổi |
+| Code làm sạch dữ liệu (`transform/models/`) | Data Architect | Dòng mới trong `cleaning_log.md` kèm số dòng trước/sau |
+| `analysis/` hoặc kết luận thống kê | Analysis Lead | Giả định mô hình đã kiểm |
+| Còn lại | Một người bất kỳ | CI xanh |
+
+- Mọi PR đều cần CI xanh (`lint` + `pipeline`).
+- Migration mới là file mới; không sửa file đã merge (CI bắt checksum lệch).
+- Sửa ngoài thư mục mình sở hữu thì phải hỏi người sở hữu (bảng phân vai trong README).
+
+## 7. Hai đường lấy dữ liệu
+
+- `live` là đường chính; mọi lô live lưu bản gốc từng trang vào `data/raw/<source>/<ngày>/<batch_id>/` trước khi parse.
+- `mock` chỉ phát lại bản gốc đó qua `mock_server`; không sinh dữ liệu giả, không sửa bản gốc (sha256 kiểm khi nạp).
+- Mỗi lô ghi `source_mode` vào `meta.ingestion_batch`. Lô live và lô mock của cùng snapshot phải trùng số dòng và tập `_row_hash` (`make mock-check`).

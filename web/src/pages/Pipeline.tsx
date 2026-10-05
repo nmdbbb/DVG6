@@ -13,10 +13,11 @@ type QualityStatus = 'all' | 'failed' | 'passed';
 export function Pipeline() {
   const [params] = useSearchParams();
   const source = params.get('source') ?? undefined;
+  const mode = (params.get('mode') ?? undefined) as 'live' | 'mock' | undefined;
   const status = (params.get('status') ?? 'all') as QualityStatus;
 
   const sources = useApi(() => apiGet('/meta/sources'), 'sources');
-  const batches = useApi(() => apiGet('/meta/batches', { query: { source, limit: 50 } }), `batches:${source}`);
+  const batches = useApi(() => apiGet('/meta/batches', { query: { source, mode, limit: 50 } }), `batches:${source}:${mode}`);
   const runs = useApi(() => apiGet('/meta/quality/runs', { query: { limit: 20 } }), 'runs');
   const checks = useApi(() => apiGet('/meta/quality', { query: { status } }), `checks:${status}`);
 
@@ -38,6 +39,15 @@ export function Pipeline() {
             options: [
               { value: '', label: 'Tất cả nguồn' },
               ...(sources.data?.data ?? []).map((s) => ({ value: s.source_name, label: s.source_name })),
+            ],
+          },
+          {
+            param: 'mode',
+            label: 'Đường lấy dữ liệu',
+            options: [
+              { value: '', label: 'live + mock' },
+              { value: 'live', label: 'live (nguồn thật)' },
+              { value: 'mock', label: 'mock (dự phòng)' },
             ],
           },
           {
@@ -63,7 +73,7 @@ export function Pipeline() {
               tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
               xAxis: {
                 type: 'category',
-                data: batchRows.map((b) => fmtDateTime(b.started_at)),
+                data: batchRows.map((b) => [fmtDateTime(b.started_at), b.source_mode].join('\n')),
                 ...axisStyle(t),
               },
               yAxis: { type: 'value', ...axisStyle(t) },
@@ -108,6 +118,11 @@ export function Pipeline() {
           columns={[
             { key: 'status', header: 'Trạng thái', render: (b) => <QualityBadge kind={b.status as 'success' | 'failed' | 'running'} /> },
             { key: 'source', header: 'Nguồn', render: (b) => <code>{b.source_name}</code> },
+            {
+              key: 'mode',
+              header: 'Đường',
+              render: (b) => <span className={`mode mode-${b.source_mode}`}>{b.source_mode === 'mock' ? 'mock (dự phòng)' : 'live'}</span>,
+            },
             { key: 'start', header: 'Bắt đầu', render: (b) => fmtDateTime(b.started_at) },
             { key: 'dur', header: 'Thời gian (s)', numeric: true, render: (b) => fmtNumber(b.duration_seconds) },
             { key: 'fetched', header: 'Lấy về', numeric: true, render: (b) => fmtInt(b.rows_fetched) },

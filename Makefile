@@ -4,15 +4,24 @@
 COMPOSE := docker compose
 ETL     := $(COMPOSE) run --rm $(RUN_FLAGS) etl
 SOURCE  ?=
+# live | mock. Để trống thì lấy SOURCE_MODE trong .env, không có thì live.
+SOURCE_MODE ?=
 # CI đặt RUN_FLAGS=-T (không có TTY)
 RUN_FLAGS ?=
 
-.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs
+ifneq ($(SOURCE_MODE),)
+MODE_ENV := -e SOURCE_MODE=$(SOURCE_MODE)
+endif
+ETL_INGEST := $(COMPOSE) run --rm $(RUN_FLAGS) $(MODE_ENV) etl
+
+.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check
 
 help:
 	@echo make up         - khoi dong Postgres, cho healthy, build image Python
 	@echo make migrate    - ap dung migration chua chay + cap quyen role
-	@echo make ingest     - chay toan bo connector (hoac SOURCE=source_demo)
+	@echo make ingest     - chay toan bo connector (SOURCE=source_demo, SOURCE_MODE=live/mock)
+	@echo make mock       - chay mock server tai http://localhost:8001
+	@echo make mock-check - ingest live roi mock, so khop so dong va _row_hash
 	@echo make transform  - dbt run: staging, core, analytics
 	@echo make quality    - dbt test + quality rules, exit 1 neu co check error fail
 	@echo make test       - pytest
@@ -23,7 +32,7 @@ help:
 	@echo make demo-break - co tinh lam hong du lieu de chung minh quality chan pipeline
 
 up:
-	$(COMPOSE) up -d --wait db
+	$(COMPOSE) up -d --wait db mock_server
 	$(COMPOSE) build etl
 
 down:
@@ -37,10 +46,20 @@ migrate:
 
 ingest:
 ifeq ($(SOURCE),)
-	$(ETL) python -m ingestion.cli run-all
+	$(ETL_INGEST) python -m ingestion.cli run-all
 else
-	$(ETL) python -m ingestion.cli run --source $(SOURCE)
+	$(ETL_INGEST) python -m ingestion.cli run --source $(SOURCE)
 endif
+
+mock:
+	$(COMPOSE) up -d --wait mock_server
+	@echo Mock server: http://localhost:8001
+
+# Nghiem thu duong du phong: hai lo phai trung so dong va tap _row_hash.
+mock-check:
+	$(MAKE) ingest SOURCE=$(or $(SOURCE),source_demo) SOURCE_MODE=live
+	$(MAKE) ingest SOURCE=$(or $(SOURCE),source_demo) SOURCE_MODE=mock
+	$(ETL) python -m scripts.compare_batches --source $(or $(SOURCE),source_demo)
 
 transform:
 	$(ETL) dbt run

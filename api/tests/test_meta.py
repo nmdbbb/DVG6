@@ -22,6 +22,11 @@ def test_batches_filter_by_source_and_status(client):
     assert all(b["source_name"] == "source_demo" and b["status"] == "success" for b in data)
 
 
+def test_batches_filter_by_mode(client):
+    data = assert_envelope(client.get("/meta/batches", params={"mode": "live"}).json())
+    assert data and all(b["source_mode"] == "live" for b in data)
+
+
 def test_batches_rejects_bad_status(client):
     assert client.get("/meta/batches", params={"status": "nope"}).status_code == 422
 

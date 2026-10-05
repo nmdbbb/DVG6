@@ -43,6 +43,7 @@ def sources(conn: Connection = Depends(get_conn)):
 def batches(
     source: str | None = Query(None, description="Lọc theo tên nguồn."),
     status: Literal["running", "success", "failed"] | None = Query(None),
+    mode: Literal["live", "mock"] | None = Query(None, description="Lọc theo đường lấy dữ liệu."),
     limit: int = Query(100, ge=1, le=1000),
     conn: Connection = Depends(get_conn),
 ):
@@ -50,17 +51,18 @@ def batches(
         conn.execute(
             text(
                 """
-            select batch_id, source_name, started_at, finished_at, status, rows_fetched,
+            select batch_id, source_name, source_mode, started_at, finished_at, status, rows_fetched,
                    row_count, bytes, error_message,
                    extract(epoch from finished_at - started_at)::float as duration_seconds
             from meta.ingestion_batch
             where (cast(:source as text) is null or source_name = :source)
               and (cast(:status as text) is null or status = :status)
+              and (cast(:mode as text) is null or source_mode = :mode)
             order by started_at desc
             limit :limit
             """
             ),
-            {"source": source, "status": status, "limit": limit},
+            {"source": source, "status": status, "mode": mode, "limit": limit},
         )
         .mappings()
         .all()

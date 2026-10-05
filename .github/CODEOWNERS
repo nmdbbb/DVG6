@@ -1,35 +1,11 @@
-# Ai phải duyệt PR chạm vào thư mục nào (branch protection bật "Require review from Code Owners").
-# Khi mọi người đã chọn vai trong README, thay @nmdbbb bằng GitHub username của người giữ vai đó.
-# Dòng sau ghi đè dòng trước.
+# Người duyệt BẮT BUỘC theo điều kiện merge trong README (mục "Nhận nhiệm vụ" → c).
+# Đường dẫn không có trong file này: một người bất kỳ duyệt + CI xanh.
+# Khi đã điền bảng phân vai, thay @nmdbbb bằng GitHub username của người giữ vai tương ứng.
 
-*                         @nmdbbb
-
-# Data Architect & Integration Owner — mọi thay đổi cấu trúc
+# Data Architect & Integration Owner — cấu trúc, core, mọi code làm sạch dữ liệu
 /db/                      @nmdbbb
-/common/                  @nmdbbb
-/scripts/                 @nmdbbb
-/docker-compose.yml       @nmdbbb
-/Dockerfile               @nmdbbb
-/Makefile                 @nmdbbb
-/.github/                 @nmdbbb
-/docs/schema.md           @nmdbbb
-/docs/data_contract.md    @nmdbbb
-/docs/decision_log.md     @nmdbbb
-/transform/models/core/   @nmdbbb
+/transform/models/        @nmdbbb
+/.github/CODEOWNERS       @nmdbbb
 
-# Data Acquisition
-/ingestion/               @nmdbbb
-/docs/sources.md          @nmdbbb
-
-# Transform
-/transform/               @nmdbbb
-/docs/cleaning_log.md     @nmdbbb
-
-# Analysis & Quality Owner — mọi kết luận thống kê và ngưỡng chất lượng
-/quality/                 @nmdbbb
+# Analysis Lead & Quality Owner — phân tích và kết luận thống kê
 /analysis/                @nmdbbb
-/docs/business_case.md    @nmdbbb
-
-# Dashboard
-/api/                     @nmdbbb
-/web/                     @nmdbbb

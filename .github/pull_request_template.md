@@ -1,13 +1,15 @@
 ## Việc làm trong PR này
 
-<!-- Một PR một việc. Không trộn thêm connector với sửa schema. -->
+Closes #
 
-## Checklist merge (docs/data_contract.md §6)
+<!-- Một PR một việc. Nhánh đặt tên <vai>/<việc>, ví dụ ingest/source-a. -->
 
-- [ ] CI xanh (lint + pipeline)
-- [ ] Chạm `db/` hoặc `transform/models/core/` → Data Architect đã duyệt
-- [ ] Chạm `analysis/`, `quality/` hoặc kết luận thống kê → Analysis & Quality Owner đã duyệt
-- [ ] Có phép làm sạch dữ liệu → đã thêm dòng vào `docs/cleaning_log.md`
-- [ ] Có quyết định đánh đổi → đã thêm dòng vào `docs/decision_log.md`
-- [ ] Thêm migration → file MỚI, không sửa file đã merge
+## Checklist merge (README → Nhận nhiệm vụ → c)
+
+- [ ] CI xanh (`lint` + `pipeline`) — bắt buộc với mọi PR
+- [ ] Chạm `db/` hoặc `transform/models/core/` → Data Architect duyệt; có đánh đổi thì thêm dòng `docs/decision_log.md`
+- [ ] Có code làm sạch dữ liệu → Data Architect duyệt; thêm dòng `docs/cleaning_log.md` kèm số dòng trước/sau
+- [ ] Chạm `analysis/` hoặc kết luận thống kê → Analysis Lead duyệt; ghi giả định mô hình đã kiểm
+- [ ] Sửa ngoài thư mục mình sở hữu → đã hỏi người sở hữu (tag họ làm reviewer)
+- [ ] Migration mới là file mới, không sửa file đã merge
 - [ ] Không có file trong `data/`, không có `.env`

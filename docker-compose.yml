@@ -34,6 +34,9 @@ services:
     profiles: ["cli"]
     environment:
       <<: *db-env
+      # live = nguồn thật (đường chính) | mock = mock_server phát lại data/raw (đường dự phòng)
+      SOURCE_MODE: ${SOURCE_MODE:-live}
+      MOCK_SERVER_URL: http://mock_server:8001
     volumes:
       - .:/app
     ports:
@@ -41,6 +44,28 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mock_server:
+        condition: service_healthy
+
+  # Đường dự phòng của ingestion: phát lại bản gốc đã lưu ở data/raw (mock_server/seed.py).
+  # Trễ 200–500 ms/request, 60 request/phút/client (quá thì 429). Xem http://localhost:8001
+  mock_server:
+    build: .
+    image: qtdl/python:dev
+    command: uvicorn mock_server.app:app --host 0.0.0.0 --port 8001
+    environment:
+      MOCK_LATENCY_MIN_MS: ${MOCK_LATENCY_MIN_MS:-200}
+      MOCK_LATENCY_MAX_MS: ${MOCK_LATENCY_MAX_MS:-500}
+      MOCK_RATE_LIMIT_PER_MIN: ${MOCK_RATE_LIMIT_PER_MIN:-60}
+    volumes:
+      - .:/app
+    ports:
+      - "${MOCK_PORT:-8001}:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
   api:
     build: .

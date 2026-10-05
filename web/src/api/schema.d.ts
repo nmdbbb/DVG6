@@ -159,6 +159,8 @@ export interface components {
             batch_id: string;
             /** Source Name */
             source_name: string;
+            /** Source Mode */
+            source_mode: string;
             /**
              * Started At
              * Format: date-time
@@ -411,6 +413,8 @@ export interface operations {
                 /** @description Lọc theo tên nguồn. */
                 source?: string | null;
                 status?: ("running" | "success" | "failed") | null;
+                /** @description Lọc theo đường lấy dữ liệu. */
+                mode?: ("live" | "mock") | null;
                 limit?: number;
             };
             header?: never;

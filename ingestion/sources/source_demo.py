@@ -8,22 +8,28 @@ Dữ liệu cố tình bẩn để tầng transform và quality có việc làm 
 - 10%  entity_code chữ thường / thừa khoảng trắng, category chữ thường -> staging chuẩn hóa
 - 0.3% measure_value ngoại lai (x20)          -> check outlier cảnh báo
 
+Đường live giả lập một API JSON phân trang (500 bản ghi/trang, chạy trong process, không có mạng)
+để minh họa đủ vòng live -> lưu bản gốc -> mock_server phát lại. Connector thật ở M5 viết
+fetch_live() bằng http_client.get() tới URL thật.
+
 Thay bằng connector thật ở M5; khi đó xóa file này khỏi registry nhưng giữ làm ví dụ.
 """
 
 from __future__ import annotations
 
+import json
 import random
 from collections.abc import Iterator
 from datetime import date, timedelta
 
-from ingestion.base import Connector, SourceMeta
+from ingestion.base import Connector, RawPage, SourceMeta
 
 N_RECORDS = 5000
 SEED = 20261005
 START = date(2020, 1, 1)
 END = date(2025, 12, 31)
 CATEGORIES = ["A", "B", "C", "D"]
+API_PAGE_SIZE = 500
 
 
 class SourceDemo(Connector):
@@ -37,6 +43,8 @@ class SourceDemo(Connector):
         "event_date",
         "measure_value",
     )
+    mock_format = "json"
+    mock_page_size = API_PAGE_SIZE
 
     def __init__(self, n_records: int = N_RECORDS, seed: int = SEED):
         self.n_records = n_records
@@ -48,7 +56,7 @@ class SourceDemo(Connector):
             url="local://ingestion/sources/source_demo.py",
             license="Nội bộ nhóm",
             update_frequency="on demand",
-            owner="Data Acquisition",
+            owner="Source & Crawler A",
         )
 
     def _entities(self, rng: random.Random) -> list[dict]:
@@ -62,7 +70,32 @@ class SourceDemo(Connector):
             for i in range(1, 21)
         ]
 
-    def fetch(self, since: date | None) -> Iterator[dict]:
+    # ---------------------------------------------------------------- "API" giả lập
+
+    def render_api_page(self, records: list[dict], page: int, page_size: int, total: int) -> dict:
+        # Hình dạng response của "API" source_demo; mock_server phát lại đúng hình dạng này.
+        return {"count": total, "page": page, "page_size": page_size, "results": records}
+
+    def fetch_live(self, since: date | None) -> Iterator[RawPage]:
+        records = list(self.generate(since))
+        n_pages = max(1, -(-len(records) // API_PAGE_SIZE))
+        for page in range(1, n_pages + 1):
+            chunk = records[(page - 1) * API_PAGE_SIZE : page * API_PAGE_SIZE]
+            body = self.render_api_page(chunk, page, API_PAGE_SIZE, len(records))
+            query = f"page={page}&page_size={API_PAGE_SIZE}" + (f"&since={since}" if since else "")
+            yield RawPage(
+                url=f"demo://api/records?{query}",
+                content=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                content_type="application/json",
+                mode="live",
+            )
+
+    def parse(self, page: RawPage) -> Iterator[dict]:
+        yield from json.loads(page.content)["results"]
+
+    # ---------------------------------------------------------------- bộ sinh dữ liệu
+
+    def generate(self, since: date | None) -> Iterator[dict]:
         rng = random.Random(self.seed)
         entities = self._entities(rng)
         span = (END - START).days

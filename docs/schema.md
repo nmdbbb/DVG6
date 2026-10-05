@@ -4,7 +4,9 @@ Một database `qtdl`, chia tầng bằng schema. Dữ liệu chảy một chi�
 
 ```mermaid
 flowchart LR
-  src[connector<br/>ingestion/sources] -->|loader| raw[(raw)]
+  real[nguồn thật] -->|live| src[connector<br/>ingestion/sources]
+  src -->|bản gốc| files[(data/raw)] -->|seed.py| mock[mock_server] -->|mock| src
+  src -->|loader| raw[(raw)]
   raw -->|dbt staging| stg[(staging)]
   stg -->|dbt core| core[(core<br/>dim_* / fct_*)]
   core -->|dbt analytics| ana[(analytics<br/>v_*)]
@@ -48,7 +50,8 @@ erDiagram
 |---|---|---|
 | `meta.schema_version` | `scripts/migrate.py` | migration đã áp dụng + checksum |
 | `meta.source` | loader | danh mục nguồn |
-| `meta.ingestion_batch` | loader | một dòng mỗi lần chạy connector |
+| `meta.ingestion_batch` | loader | một dòng mỗi lần chạy connector; `source_mode` = live hoặc mock |
+| `meta.ingestion_batch_row` | loader | mọi `_row_hash` mỗi lô đã lấy về (kể cả đã có trong raw) — so lô live/mock |
 | `meta.quality_run` | `quality/runner.py` | kết quả từng check, nhóm theo `run_id` |
 | `meta.table_profile`, `meta.column_profile` | `quality/runner.py` | số dòng, tỉ lệ NULL mọi bảng |
 
