@@ -27,10 +27,16 @@ def _parse_since(value: str | None) -> date | None:
     return datetime.strptime(value, "%Y-%m-%d").date() if value else None
 
 
-def _mode(value: str | None) -> str:
+def _mode(value: str | None, since: str | None = None) -> str:
     mode = (value or os.environ.get("SOURCE_MODE") or "live").strip().lower()
     if mode not in SOURCE_MODES:
         raise typer.BadParameter(f"--endpoint / SOURCE_MODE phải là {' | '.join(SOURCE_MODES)}")
+    if mode == "mock" and since:
+        # Kiểm trước khi tạo lô, để không sinh lô failed vô nghĩa.
+        raise typer.BadParameter(
+            "mock phát lại snapshot live gần nhất, không lọc --since. "
+            "Chạy live với --since trước, rồi mới chạy mock."
+        )
     return mode
 
 
@@ -61,7 +67,11 @@ def run(
     limit: int = typer.Option(None, help="Giới hạn số bản ghi, để chạy thử nhanh."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Chỉ đếm bản ghi, không ghi gì."),
 ) -> None:
-    _report(loader.run(registry.get(source), _parse_since(since), limit, dry_run, _mode(endpoint)))
+    _report(
+        loader.run(
+            registry.get(source), _parse_since(since), limit, dry_run, _mode(endpoint, since)
+        )
+    )
 
 
 @app.command("run-all")
@@ -70,7 +80,7 @@ def run_all(
     since: str = typer.Option(None, help="YYYY-MM-DD"),
     limit: int = typer.Option(None),
 ) -> None:
-    mode = _mode(endpoint)
+    mode = _mode(endpoint, since)
     for name in sorted(registry.SOURCES):
         _report(loader.run(registry.get(name), _parse_since(since), limit, mode=mode))
 
