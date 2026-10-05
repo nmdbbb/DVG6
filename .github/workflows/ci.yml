@@ -29,7 +29,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install ruff black
+      - name: Cài ruff + black đúng phiên bản ghim trong pyproject.toml
+        run: pip install $(grep -oE '"(ruff|black)==[^"]+"' pyproject.toml | tr -d '"')
       - run: ruff check .
       - run: black --check .
 
