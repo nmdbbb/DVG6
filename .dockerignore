@@ -1,0 +1,10 @@
+.git
+.env
+data
+web/node_modules
+web/dist
+transform/target
+transform/logs
+**/__pycache__
+.pytest_cache
+.ruff_cache

@@ -1,0 +1,14 @@
+# Không chứa bí mật: mọi giá trị lấy từ biến môi trường (docker-compose.yml / .env).
+# dbt chạy bằng role etl_writer, đúng phân quyền trong db/roles.sql.
+qtdl:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'qtdl') }}"
+      user: etl_writer
+      password: "{{ env_var('ETL_WRITER_PASSWORD', 'change_me') }}"
+      schema: staging
+      threads: 4

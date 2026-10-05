@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: v_measure_by_category_month
+    description: >
+      Độ đo tổng hợp theo tháng và nhóm thực thể. Grain: một dòng cho mỗi (month, category).
+    columns:
+      - name: month
+        description: Ngày đầu tháng.
+      - name: category
+        description: Nhóm thực thể; UNKNOWN khi sự kiện không map được thực thể.
+      - name: n_records
+        description: Số sự kiện.
+      - name: n_measured
+        description: Số sự kiện có độ đo (khác NULL).
+      - name: total_measure
+        description: Tổng độ đo.
+      - name: avg_measure
+        description: Trung bình độ đo trên các sự kiện có giá trị.

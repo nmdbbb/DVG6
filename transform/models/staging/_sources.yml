@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: Bản sao nguyên trạng của nguồn, do ingestion ghi.
+    tables:
+      - name: source_demo_records
+        description: Nguồn giả source_demo (xem docs/sources.md).
+
+  - name: meta
+    schema: meta
+    description: Nhật ký vận hành pipeline.
+    tables:
+      - name: ingestion_batch
+        description: Lô nạp; staging chỉ lấy dòng thuộc lô success.

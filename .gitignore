@@ -1,0 +1,43 @@
+# --- Dữ liệu: KHÔNG BAO GIỜ commit (chỉ giữ .gitkeep để có khung thư mục) ---
+data/**
+!data/
+!data/raw/
+!data/exports/
+!data/**/.gitkeep
+
+# --- Bí mật ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- dbt ---
+transform/target/
+transform/logs/
+transform/dbt_packages/
+transform/.user.yml
+logs/
+
+# --- Node / frontend ---
+node_modules/
+web/dist/
+
+# --- File cơ sở dữ liệu cục bộ ---
+*.duckdb
+*.sqlite
+*.db
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

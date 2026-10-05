@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_source_demo__records
+    description: >
+      Bản ghi source_demo đã ép kiểu và chuẩn hóa, chỉ gồm lô nạp success.
+      Grain: một dòng cho mỗi bản ghi raw (mỗi _row_hash).
+    columns:
+      - name: record_id
+        description: Mã sự kiện; NULL nếu nguồn để rỗng.
+      - name: entity_id
+        description: Mã thực thể, đã cắt khoảng trắng và viết hoa (khóa tự nhiên của dim_entity).
+      - name: entity_name
+        description: Tên thực thể như nguồn ghi, đã cắt khoảng trắng.
+      - name: category
+        description: Nhóm thực thể, viết hoa.
+      - name: event_date
+        description: Ngày sự kiện.
+      - name: measure_value
+        description: Độ đo, numeric(14,4); NULL nếu nguồn để rỗng.
+      - name: batch_id
+        description: Lô nạp sinh ra dòng (meta.ingestion_batch).
+      - name: ingested_at
+        description: Thời điểm dòng được ghi vào raw.
+      - name: row_hash
+        description: md5 bản ghi gốc.
+        data_tests:
+          - unique
+          - not_null

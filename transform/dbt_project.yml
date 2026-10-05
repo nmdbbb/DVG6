@@ -1,0 +1,27 @@
+name: qtdl
+version: "0.1.0"
+config-version: 2
+profile: qtdl
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: target
+clean-targets: ["target", "logs"]
+
+models:
+  qtdl:
+    # description trong schema.yml được ghi thành COMMENT ON của Postgres;
+    # API /catalog đọc chính các comment này, nên tài liệu không lệch database.
+    +persist_docs:
+      relation: true
+      columns: true
+    staging:
+      +schema: staging
+      +materialized: view
+    core:
+      +schema: core
+      +materialized: table
+    analytics:
+      +schema: analytics
+      +materialized: view

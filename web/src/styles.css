@@ -1,0 +1,345 @@
+/* Token màu theo vai trò. Bảng màu biểu đồ đã kiểm tra CVD (categorical slot 1–2, status palette). */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --accent: #2a78d6;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --good-ink: #006300;
+  --critical-ink: #b42323;
+  --warning-ink: #7a5300;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --accent: #3987e5;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --good-ink: #0ca30c;
+    --critical-ink: #e66767;
+    --warning-ink: #fab219;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+/* --- Khung --- */
+.shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 100vh;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  background: var(--surface-1);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 16px;
+  padding: 0 10px 16px;
+}
+
+.brand span {
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.side a {
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.side a:hover {
+  background: var(--border);
+}
+
+.side a.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  background: var(--border);
+}
+
+main {
+  padding: 24px 28px 48px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 16px;
+}
+
+h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.lede {
+  color: var(--text-secondary);
+  max-width: 80ch;
+  margin-top: -6px;
+}
+
+/* --- Thẻ số --- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 650;
+  margin: 2px 0;
+}
+
+.stat-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* --- Card --- */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.provenance {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 0 16px;
+}
+
+.catalog {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.catalog td .clamp {
+  min-width: 24ch;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .grid-2,
+  .catalog {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-ghost {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--axis);
+}
+
+/* --- Bộ lọc --- */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.filter-bar select {
+  font: inherit;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--axis);
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+/* --- Bảng --- */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--axis);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+td {
+  border-bottom: 1px solid var(--grid);
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+tr.clickable {
+  cursor: pointer;
+}
+
+tr.clickable:hover,
+tr.clickable:focus-visible {
+  background: var(--border);
+  outline: none;
+}
+
+tr.selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- Badge trạng thái: luôn có biểu tượng + chữ --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
+
+.badge-good {
+  color: var(--good-ink);
+}
+
+.badge-warning {
+  color: var(--warning-ink);
+}
+
+.badge-critical {
+  color: var(--critical-ink);
+}
+
+.badge-neutral {
+  color: var(--text-muted);
+}
+
+.empty,
+.loading {
+  color: var(--text-muted);
+}
+
+.error {
+  color: var(--critical-ink);
+}

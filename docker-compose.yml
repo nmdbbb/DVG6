@@ -1,0 +1,85 @@
+name: qtdl
+
+x-db-env: &db-env
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-qtdl}
+  POSTGRES_USER: ${POSTGRES_USER:-qtdl}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+  ETL_WRITER_PASSWORD: ${ETL_WRITER_PASSWORD:-change_me}
+  API_READER_PASSWORD: ${API_READER_PASSWORD:-change_me}
+  ANALYST_PASSWORD: ${ANALYST_PASSWORD:-change_me}
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-qtdl}
+      POSTGRES_USER: ${POSTGRES_USER:-qtdl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Hộp công cụ chạy migrate / ingest / dbt / quality / test. Gọi bằng `docker compose run --rm etl ...`
+  etl:
+    build: .
+    image: qtdl/python:dev
+    profiles: ["cli"]
+    environment:
+      <<: *db-env
+    volumes:
+      - .:/app
+    ports:
+      - "8080:8080"   # dbt docs serve (make lineage)
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    image: qtdl/python:dev
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir api
+    environment:
+      <<: *db-env
+    volumes:
+      - .:/app
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+      API_PROXY_TARGET: http://api:8000
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./web:/web
+      - /web/node_modules
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      - api
+
+  pgadmin:
+    image: dpage/pgadmin4
+    profiles: ["tools"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@qtdl.local
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

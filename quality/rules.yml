@@ -1,0 +1,95 @@
+# Check ngoài dbt test. Mỗi check: một câu SQL trả về MỘT giá trị số, so với expect.
+# severity: error -> make quality exit 1, chặn pipeline; warning -> chỉ báo trên dashboard.
+# Check khóa chính / not null / quan hệ / tập giá trị: khai báo trong transform/models/*/schema.yml.
+# Chủ sở hữu file: Analysis & Quality Owner. Đổi ngưỡng phải ghi lý do vào docs/decision_log.md.
+
+# --- M3: ba check bắt buộc -----------------------------------------------------------
+
+- name: dim_entity_pk_unique_not_null
+  description: Khóa chính dim_entity duy nhất và không NULL.
+  severity: error
+  sql: |
+    select (count(*) - count(distinct entity_key))
+         + count(*) filter (where entity_key is null)
+    from core.dim_entity
+  expect: {operator: "==", value: 0}
+
+- name: fct_main_no_orphan_entity
+  description: Không có entity_key trong fct_main mà không tồn tại ở dim_entity.
+  severity: error
+  sql: |
+    select count(*) from core.fct_main f
+    left join core.dim_entity d on f.entity_key = d.entity_key
+    where d.entity_key is null
+  expect: {operator: "==", value: 0}
+
+- name: raw_to_core_row_reconciliation
+  description: >
+    Tỉ lệ dòng mất từ raw (lô success) tới fct_main. Mất do bỏ dòng thiếu record_id và khử trùng
+    lặp; vượt ngưỡng nghĩa là có join hoặc filter đang âm thầm làm rơi dữ liệu.
+  severity: error
+  sql: |
+    with r as (
+      select count(*)::numeric as n from raw.source_demo_records r
+      join meta.ingestion_batch b on b.batch_id = r._batch_id
+      where b.status = 'success'
+    )
+    select case when r.n = 0 then 0
+                else 1 - (select count(*) from core.fct_main) / r.n end
+    from r
+  expect: {operator: "<=", value: 0.05}
+
+# --- Bổ sung -------------------------------------------------------------------------
+
+- name: fct_main_grain_unique
+  description: Không trùng record_id (khóa grain) trong fct_main.
+  severity: error
+  sql: |
+    select count(*) - count(distinct record_id) from core.fct_main
+  expect: {operator: "==", value: 0}
+
+- name: fct_main_not_empty
+  description: Fact không rỗng sau transform.
+  severity: error
+  sql: select count(*) from core.fct_main
+  expect: {operator: ">", value: 0}
+
+- name: fct_main_null_rate_measure
+  description: Tỉ lệ NULL của measure_value.
+  severity: warning
+  sql: |
+    select coalesce(avg(case when measure_value is null then 1 else 0 end), 0) from core.fct_main
+  expect: {operator: "<=", value: 0.05}
+
+- name: fct_main_unknown_entity_rate
+  description: Tỉ lệ sự kiện không map được thực thể (entity_key = -1).
+  severity: warning
+  sql: |
+    select coalesce(avg(case when entity_key = -1 then 1 else 0 end), 0) from core.fct_main
+  expect: {operator: "<=", value: 0.01}
+
+- name: fct_main_event_date_in_range
+  description: Số sự kiện có ngày ngoài [2000-01-01, hôm nay].
+  severity: warning
+  sql: |
+    select count(*) from core.fct_main
+    where event_date < date '2000-01-01' or event_date > current_date
+  expect: {operator: "==", value: 0}
+
+- name: fct_main_measure_outlier_rate
+  description: Tỉ lệ độ đo vượt trung bình + 4 độ lệch chuẩn. Chỉ báo, không cắt.
+  severity: warning
+  sql: |
+    with s as (select avg(measure_value) m, stddev_pop(measure_value) sd from core.fct_main)
+    select coalesce(avg(case when f.measure_value > s.m + 4 * s.sd then 1 else 0 end), 0)
+    from core.fct_main f cross join s
+    where f.measure_value is not null
+  expect: {operator: "<=", value: 0.005}
+
+- name: latest_batch_freshness_days
+  description: Số ngày kể từ lô nạp success gần nhất.
+  severity: warning
+  sql: |
+    select extract(epoch from now() - max(finished_at)) / 86400
+    from meta.ingestion_batch where status = 'success'
+  expect: {operator: "<=", value: 7}

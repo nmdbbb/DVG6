@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: dim_entity
+    description: >
+      Thực thể được đo. Grain: một dòng cho mỗi entity_id, cộng dòng unknown (entity_key = -1)
+      để fact không bao giờ mất dòng khi join.
+    columns:
+      - name: entity_key
+        description: Khóa thay thế; -1 là thực thể unknown.
+        data_tests:
+          - unique
+          - not_null
+      - name: entity_id
+        description: Khóa tự nhiên (mã thực thể từ nguồn, viết hoa).
+        data_tests:
+          - unique
+          - not_null
+      - name: entity_name
+        description: Tên thực thể (giá trị xuất hiện nhiều nhất trong nguồn).
+      - name: category
+        description: Nhóm thực thể A/B/C/D; NULL cho dòng unknown.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["A", "B", "C", "D"]
+              config:
+                severity: warn
+
+  - name: fct_main
+    description: >
+      Sự kiện đo. Grain: một dòng cho mỗi record_id. Dòng thiếu record_id bị loại,
+      record_id trùng giữ bản nạp sau cùng.
+    columns:
+      - name: record_id
+        description: Mã sự kiện (khóa grain).
+        data_tests:
+          - unique
+          - not_null
+      - name: entity_key
+        description: Khóa ngoại tới dim_entity; -1 khi nguồn không ghi mã thực thể.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_entity')
+                field: entity_key
+      - name: event_date
+        description: Ngày sự kiện.
+        data_tests:
+          - not_null
+      - name: measure_value
+        description: Độ đo; NULL khi nguồn để rỗng (không impute, cleaning_log #7).
+      - name: batch_id
+        description: Lô nạp sinh ra dòng, để truy vết về meta.ingestion_batch.

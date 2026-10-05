@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chặn file dữ liệu lọt vào commit
+        run: |
+          leaked=$(git ls-files data | grep -v '/\.gitkeep$' || true)
+          if [ -n "$leaked" ]; then
+            echo "::error::Không được commit file trong data/:"; echo "$leaked"; exit 1
+          fi
+          if git ls-files | grep -E '(^|/)\.env$'; then
+            echo "::error::Không được commit file .env"; exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff black
+      - run: ruff check .
+      - run: black --check .
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run lint
+        working-directory: web
+      - run: npm run typecheck
+        working-directory: web
+
+  pipeline:
+    name: pipeline
+    runs-on: ubuntu-latest
+    env:
+      RUN_FLAGS: "-T"
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+
+      # Toàn bộ đường ống trên database rỗng, giống hệt máy local.
+      - name: make up
+        run: make up
+      - name: make migrate (database rỗng)
+        run: make migrate
+      - name: make migrate lần hai (idempotent, checksum khớp)
+        run: make migrate
+      - name: make ingest
+        run: make ingest
+      - name: make ingest lần hai (không sinh dòng trùng)
+        run: |
+          make ingest
+          dupes=$(docker compose exec -T db psql -U qtdl -d qtdl -tAc \
+            "select count(*) - count(distinct _row_hash) from raw.source_demo_records")
+          test "$dupes" -eq 0
+      - name: make transform
+        run: make transform
+      - name: make quality (exit 1 nếu check error fail)
+        run: make quality
+      - name: make test
+        run: make test
+      - name: Cổng quality phải chặn dữ liệu hỏng
+        run: |
+          make demo-break
+          if make quality; then echo "::error::quality không chặn dữ liệu hỏng"; exit 1; fi
+
+      - name: Log khi lỗi
+        if: failure()
+        run: docker compose logs db
