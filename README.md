@@ -2,7 +2,9 @@
 
 Warehouse PostgreSQL nhiều tầng (`raw → staging → core → analytics`, cộng `meta`) với ingestion có nhật ký lô, mock server làm đường dự phòng cho nguồn, transform bằng dbt, cổng chất lượng tự động và dashboard React hiển thị cả kết quả phân tích lẫn sức khỏe dữ liệu.
 
-**Trạng thái:** M1–M4 xong, chạy trên nguồn giả `source_demo`. Topic chưa chốt; M5 thay bằng nguồn thật.
+**Topic (chốt 2026-10-11):** phản ứng bất lợi sau tiêm vắc xin COVID-19 trên dữ liệu [VAERS](https://vaers.hhs.gov/data/datasets.html), tái lập và mở rộng [Flora et al. 2022](https://doi.org/10.3390/ijms23158235). Câu hỏi nghiên cứu: [docs/business_case.md](docs/business_case.md) · cách làm từng phân tích: [docs/analysis_plan.md](docs/analysis_plan.md).
+
+**Trạng thái:** M1–M4 xong, đang chạy trên nguồn giả `source_demo`. M5 đang mở — xem [issue theo vai](https://github.com/nmdbbb/DVG6/issues).
 
 | Mốc | Nội dung | Trạng thái |
 |---|---|---|
@@ -11,8 +13,8 @@ Warehouse PostgreSQL nhiều tầng (`raw → staging → core → analytics`, c
 | M2b | Mock server phát lại bản gốc, `SOURCE_MODE=live\|mock`, lô live và mock khớp `_row_hash` | ✅ |
 | M3 | dbt staging/core/analytics + quality gate (exit 1 khi hỏng) | ✅ |
 | M4 | FastAPI + dashboard: Tổng quan, Sức khỏe pipeline, Catalog | ✅ |
-| M5 | Nguồn thật | ⏳ chờ chốt topic |
-| M6 | Phân tích, trang Khám phá + Phân tích | ⏳ |
+| M5 | Nguồn thật: VAERS + openFDA, star schema, quality theo miền giá trị | 🔵 đang làm |
+| M6 | Phân tích (tần suất, chi-square, phân cụm, ARM) + trang Khám phá, Phân tích | ⏳ |
 | M7 | Tài liệu, báo cáo | ⏳ |
 
 ## Chạy
@@ -247,4 +249,4 @@ Mỗi vai: mục tiêu, việc cụ thể theo mốc, ai cần phối hợp, và
 
 ---
 
-Tài liệu: [schema](docs/schema.md) · [data contract](docs/data_contract.md) · [nguồn](docs/sources.md) · [decision log](docs/decision_log.md) · [cleaning log](docs/cleaning_log.md) · [quality report](docs/quality_report.md) · [runbook](docs/runbook.md) · [business case](docs/business_case.md)
+Tài liệu: [business case](docs/business_case.md) · [kế hoạch phân tích](docs/analysis_plan.md) · [schema](docs/schema.md) · [data contract](docs/data_contract.md) · [nguồn](docs/sources.md) · [decision log](docs/decision_log.md) · [cleaning log](docs/cleaning_log.md) · [quality report](docs/quality_report.md) · [runbook](docs/runbook.md)
