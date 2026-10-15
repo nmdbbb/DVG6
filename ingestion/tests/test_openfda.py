@@ -16,7 +16,10 @@ def _label(spl_id="id-1", names=None, rxcui=None):
 
 
 def _page(labels, mode="live"):
-    body = {"meta": {"results": {"skip": 0, "limit": len(labels), "total": len(labels)}}, "results": labels}
+    body = {
+        "meta": {"results": {"skip": 0, "limit": len(labels), "total": len(labels)}},
+        "results": labels,
+    }
     return RawPage("https://example.test", json.dumps(body).encode(), "application/json", mode)
 
 
@@ -59,7 +62,9 @@ def test_mock_render_preserves_original_api_results():
     assert set(body) == {"meta", "results"}
     assert body["results"] == [label]
     assert body["meta"]["results"] == {"skip": 0, "limit": 1000, "total": 1}
-    reparsed = list(connector.parse(RawPage("mock", json.dumps(body).encode(), "application/json", "mock")))
+    reparsed = list(
+        connector.parse(RawPage("mock", json.dumps(body).encode(), "application/json", "mock"))
+    )
     assert connector.row_hash(reparsed[0]) == connector.row_hash(record)
 
 
