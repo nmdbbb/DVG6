@@ -6,7 +6,6 @@ import hashlib
 import json
 from collections.abc import Iterator
 from datetime import date
-from urllib.parse import urlencode
 
 from ingestion import http_client
 from ingestion.base import Connector, RawPage, SourceMeta
