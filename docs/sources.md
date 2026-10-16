@@ -54,7 +54,7 @@ Dữ liệu cố tình bẩn để mọi nhánh của transform và quality đ�
 
 | Thuộc tính | Giá trị |
 |---|---|
-| `source_name` | `vaers` |
+| `source_name` | `vaers_data`, `vaers_symptoms`, `vaers_vax` (mỗi CSV một connector) |
 | Connector | `ingestion/sources/vaers.py` (Source & Crawler A) |
 | Bảng raw | `raw.vaers_data`, `raw.vaers_symptoms`, `raw.vaers_vax` (migration `006`) |
 | URL | https://vaers.hhs.gov/data/datasets.html |
@@ -62,7 +62,7 @@ Dữ liệu cố tình bẩn để mọi nhánh của transform và quality đ�
 | Tần suất cập nhật | Hàng tuần; dữ liệu đã khử định danh xuất hiện sau 4–6 tuần |
 | Cách lấy (live) | **Tải tay một lần** — xem mục "Tại sao không crawl được" bên dưới |
 | Đường mock | `mock_format = "html"` — mock_server phát lại snapshot đã lưu |
-| Khóa định danh bản ghi | md5 của cả dòng CSV gốc (giữ nguyên trạng, kể cả khoảng trắng) |
+| Khóa định danh bản ghi | md5 của toàn bộ bản ghi dạng JSON sắp khóa, giữ nguyên giá trị chuỗi và khoảng trắng; không phải hash bytes CSV |
 | Phạm vi | Báo cáo nhận trong 2021, `VAX_TYPE = 'COVID19'` |
 | Rủi ro đã biết | Báo cáo thụ động: trùng lặp ~29%, thiếu giá trị, sai chính tả, không có mẫu số |
 
@@ -74,8 +74,8 @@ Quy trình nhóm dùng:
 
 1. **Một người tải tay một lần**, chọn file năm cần, nhập mã xác thực.
 2. Đặt file ZIP vào `data/landing/vaers/<ngày>/2021VAERSData.zip` (thư mục `data/` không commit).
-3. Chạy `make landing-register SOURCE=vaers` để ghi tên file, kích thước, **sha256** và ngày tải vào `docs/sources_landing.md`.
-4. `make ingest SOURCE=vaers` đọc ZIP từ landing, kiểm sha256 khớp với bản đã đăng ký, rồi mới parse.
+3. Chạy `python -m ingestion.inspect_vaers <đường-dẫn-ZIP>`; ghi kích thước, **sha256** và ngày tải vào `docs/sources_landing.md`, đăng ký đường dẫn/checksum/encoding trong `ingestion/sources/vaers_landing.json`. Lệnh `make landing-register` chưa được triển khai.
+4. Chạy riêng từng connector: `make ingest SOURCE=vaers_data`, `make ingest SOURCE=vaers_symptoms`, `make ingest SOURCE=vaers_vax`. Mỗi connector kiểm sha256 trước khi đọc CSV. Hướng dẫn không dùng make và preview không cần Docker: [vaers_ingestion.md](vaers_ingestion.md).
 
 Bản ZIP là **bản gốc bất biến** của nguồn: connector lưu từng khối CSV thành trang trong `data/raw/vaers/<ngày>/<batch_id>/`, nên mock_server phát lại được và `make mock-check` vẫn khớp `_row_hash` như mọi nguồn khác.
 
