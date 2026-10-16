@@ -72,6 +72,21 @@ def test_no_snapshot_is_503(client):
     assert client.get("/health").json()["snapshots"]["source_demo"] is None
 
 
+def test_health_reads_metadata_without_loading_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("MOCK_RAW_DIR", str(tmp_path))
+    seed._cache.clear()
+    _write_snapshot(tmp_path)
+
+    def must_not_load(source):
+        raise AssertionError("Healthcheck must not load snapshot records")
+
+    monkeypatch.setattr(seed, "load", must_not_load)
+    response = mock_app.health()
+    assert response["status"] == "ok"
+    assert response["snapshots"]["source_demo"] == "batch-130-2026"
+    assert seed._cache == {}
+
+
 def test_unknown_source_is_404(client, tmp_path):
     _write_snapshot(tmp_path)
     assert client.get("/api/khong_co").status_code == 404

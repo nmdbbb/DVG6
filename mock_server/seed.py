@@ -16,9 +16,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from common.db import REPO_ROOT
 from ingestion import registry
 from ingestion.base import RawPage
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def raw_dir() -> Path:
