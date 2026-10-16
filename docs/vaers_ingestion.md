@@ -47,6 +47,57 @@ Các cột CSV giữ nguyên chữ hoa (SQL cần dùng dấu ngoặc kép, ví 
 Khóa chống nạp lại là MD5 của dict bản ghi dạng JSON sắp khóa, không phải MD5
 bytes của dòng CSV. `VAERS_ID` không unique; raw chưa khử trùng lặp nghiệp vụ.
 
+## Phục hồi sau lô lỗi — bàn giao cho Transform
+
+Mỗi lần chạy tạo một `batch_id` mới. Loader commit từng khối, nên một lô bị lỗi
+hoặc bị dừng có thể đã ghi nhiều dòng vào raw. `_batch_id` của dòng raw chỉ lô đầu
+tiên ghi dòng đó. Khi chạy lại, hash trùng không được chèn thêm và `_batch_id`
+không đổi, nhưng `meta.ingestion_batch_row` vẫn ghi nhận hash trong lô mới.
+
+Vì vậy, lô gốc `failed` không có nghĩa mọi dòng của lô đó đều sai. Nếu một lô sau
+hoàn thành với `success` và có cùng hash, dòng đã được xác nhận qua lần nạp thành
+công. Giữ nguyên trạng thái lỗi lịch sử và dữ liệu raw; không đổi lô cũ sang
+`success`, không xóa bảng và không UPDATE `_batch_id` để che lịch sử lỗi.
+
+**Yêu cầu cho staging VAERS:** nhận dòng khi hash đã xuất hiện trong ít nhất một
+lô `success` của cùng `source_name`. Không chỉ JOIN qua `raw._batch_id` rồi lọc
+`status = 'success'`: cách đó bỏ sót dữ liệu hợp lệ sau lần chạy lại. Dùng `EXISTS`
+để mỗi dòng raw chỉ xuất hiện một lần dù nhiều lô thành công đã đọc cùng hash.
+
+SQL tham khảo cho model triệu chứng (áp dụng trước unpivot/làm sạch):
+
+```sql
+select r.*
+from raw.vaers_symptoms r
+where exists (
+    select 1
+    from meta.ingestion_batch_row br
+    join meta.ingestion_batch b on b.batch_id = br.batch_id
+    where br.row_hash = r._row_hash
+      and b.source_name = r._source_name
+      and b.status = 'success'
+);
+```
+
+Áp dụng cùng điều kiện cho `raw.vaers_data` và `raw.vaers_vax`. Không chỉ so hash
+mà bỏ nguồn, vì các nguồn khác nhau có thể có cùng hash. Điều kiện này xác nhận
+đã nạp thành công, không thay thế kiểm tra chất lượng hay khử trùng lặp nghiệp vụ.
+
+**Trường hợp đã xác nhận ngày 2026-10-16, theo kết quả SQL người dùng cung cấp:**
+
+- `raw.vaers_symptoms` có 1030201 dòng: 874900 dòng gắn lô gốc `failed`,
+  155301 dòng gắn lô gốc `success`.
+- Kiểm tra hash trong lô thành công của nguồn `vaers_symptoms` trả về đủ
+  1030201 dòng. Không cần nạp lại chỉ để đổi trạng thái lô gốc.
+- Đây là kết quả kiểm tra database, chưa chứng minh model staging đã áp dụng
+  đúng điều kiện. Người làm Transform cần triển khai và kiểm tra số dòng trước
+  các phép lọc/unpivot; không coi ghi chú này là bản sửa logic staging đã hoàn tất.
+- Lô còn `running` cần được người vận hành kiểm tra có tiến trình đang chạy hay
+  đã bị gián đoạn; không tự đổi trạng thái khi chưa xác minh.
+
+Nếu số dòng được xác nhận nhỏ hơn số dòng raw, kiểm tra các lô lỗi và nhật ký
+hash trước khi quyết định chạy lại. Không nhận dòng chỉ xuất hiện trong lô lỗi.
+
 ## Phối hợp Crawl B
 
 Mock HTML hiện có hỗ trợ cả ba tên nguồn, không cần thêm route.

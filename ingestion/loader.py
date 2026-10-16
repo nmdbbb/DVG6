@@ -8,7 +8,12 @@ Vòng đời một lô:
 3. Parse trang, ghi từng khối vào bảng raw kèm _batch_id; trùng _row_hash với lô trước thì bỏ qua.
    Mọi _row_hash lô đã thấy ghi vào meta.ingestion_batch_row (kể cả bản ghi đã có sẵn).
 4. Cập nhật status='success' + row_count, hoặc 'failed' + error_message.
-5. Lô fail giữ nguyên dòng đã ghi; staging chỉ đọc lô success nên tự bỏ qua.
+5. Lô fail giữ nguyên các khối đã commit. Chạy lại tạo batch_id mới, không đổi _batch_id
+   của dòng raw đã có; lô mới vẫn ghi nhận hash trong meta.ingestion_batch_row.
+   Khi phục hồi sau lỗi, staging cần EXISTS hash trong một lô success của CÙNG nguồn,
+   không chỉ lọc trạng thái lô gốc qua raw._batch_id (có thể vẫn failed/running).
+   Đây là yêu cầu cho staging, không phải logic đã được loader tự sửa.
+   Xem docs/vaers_ingestion.md, mục phục hồi sau lô lỗi.
 """
 
 from __future__ import annotations
