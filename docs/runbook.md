@@ -23,12 +23,23 @@ make dashboard                # http://localhost:5173 · API docs http://localho
 
 Chứng minh tái tạo được: `make reset` xóa sạch mọi schema rồi chạy lại toàn bộ.
 
+## Nguồn tải tay (VAERS)
+
+Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải (decision #23). Mỗi người dựng lại warehouse làm như sau:
+
+1. Tải đúng file có sha256 ghi trong [sources_landing.md](sources_landing.md) về `data/landing/vaers/<ngày>/` (ví dụ `data/landing/vaers/2026-10-15/2021VAERSData.zip`). Thư mục `data/` đã bị `.gitignore` chặn, file không bao giờ vào git.
+2. `make landing-verify` — in `Landing: N file khớp checksum`. Lệch hoặc thiếu file thì exit 1 kèm sha256 đúng cần tải.
+3. Chỉ người **lần đầu** dùng một file mới (hoặc nguồn đã đổi dữ liệu): `make landing-register SOURCE=vaers` (đặt `BY="Tên"` nếu không muốn lấy `git config user.name`). Lệnh thêm một dòng vào `sources_landing.md`; file đổi nội dung thì thêm dòng mới, không sửa dòng cũ. Commit bảng đó cùng một dòng mới trong `decision_log.md`.
+
+`make ingest` luôn chạy `landing-verify` trước, nên file bị sửa dù một byte cũng không được nạp.
+
 ## Từng bước làm gì
 
 | Lệnh | Việc | Kiểm tra thành công |
 |---|---|---|
 | `make up` | Postgres 16 + mock_server chạy, chờ healthy; build image `qtdl/python:dev` | `docker compose ps` thấy `db`, `mock_server` healthy |
-| `make migrate` | Chạy migration chưa áp dụng, cấp quyền theo `db/roles.sql` | in `Migration xong`; `meta.schema_version` có 5 dòng |
+| `make migrate` | Chạy migration chưa áp dụng, cấp quyền theo `db/roles.sql` | in `Migration xong`; `meta.schema_version` có đủ số dòng bằng số file trong `db/migrations/` |
+| `make landing-verify` | Băm lại mọi file trong `data/landing/` đã đăng ký, so với `sources_landing.md` | `Landing: N file khớp checksum`, exit 0 |
 | `make ingest` | Mọi connector → `raw` + `meta.ingestion_batch`, đường `live`; lưu bản gốc ở `data/raw/` | dòng `live success`; chạy lại thì `new_rows=0` |
 | `make ingest SOURCE_MODE=mock` | Như trên nhưng lấy từ mock_server | dòng `mock success` |
 | `make mock-check` | live rồi mock cho `source_demo`, so hai lô | in `KHỚP`, exit 0 |
@@ -48,6 +59,7 @@ Chứng minh tái tạo được: `make reset` xóa sạch mọi schema rồi ch
 | mock: `sha256 lệch` | file trong `data/raw/` bị sửa tay | không sửa bản gốc; chạy lại live để có snapshot mới |
 | mock: `không lọc --since` | dùng `--since` với mock | chạy live với `--since`, sau đó mock phát lại snapshot đó |
 | mock chậm | đúng thiết kế: trễ 200–500 ms, 60 request/phút | tăng `mock_page_size` của connector (JSON), hoặc giảm độ trễ trong `.env` khi chạy thử |
+| `Checksum lệch` khi `make landing-verify` / `make ingest` | file trong `data/landing/` bị sửa hoặc tải nhầm bản | tải lại đúng file theo sha256 trong `sources_landing.md`; chỉ khi chủ ý đổi dữ liệu mới `make landing-register` và ghi `decision_log.md` |
 | `checksum lệch` khi migrate | ai đó sửa file migration đã áp dụng | hoàn tác file đó, viết migration mới số lớn hơn |
 | `password authentication failed for user "etl_writer"` | đổi mật khẩu trong `.env` sau khi đã migrate | `make migrate` (cập nhật lại mật khẩu role) |
 | `relation "core.fct_main" does not exist` khi quality | chưa transform | `make transform` |
