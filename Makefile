@@ -8,18 +8,22 @@ SOURCE  ?=
 SOURCE_MODE ?=
 # CI đặt RUN_FLAGS=-T (không có TTY)
 RUN_FLAGS ?=
+# Người tải file vào data/landing (make landing-register). Để trống thì lấy git user.name.
+BY ?= $(shell git config user.name)
 
 ifneq ($(SOURCE_MODE),)
 MODE_ENV := -e SOURCE_MODE=$(SOURCE_MODE)
 endif
 ETL_INGEST := $(COMPOSE) run --rm $(RUN_FLAGS) $(MODE_ENV) etl
 
-.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check
+.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check landing-register landing-verify
 
 help:
 	@echo make up         - khoi dong Postgres, cho healthy, build image Python
 	@echo make migrate    - ap dung migration chua chay + cap quyen role
 	@echo make ingest     - chay toan bo connector (SOURCE=source_demo, SOURCE_MODE=live/mock)
+	@echo make landing-register SOURCE=vaers - ghi sha256 file tai tay trong data/landing vao docs/sources_landing.md
+	@echo make landing-verify   - kiem lai sha256 moi file da dang ky, exit 1 neu lech
 	@echo make mock       - chay mock server tai http://localhost:8001
 	@echo make mock-check - ingest live roi mock, so khop so dong va _row_hash
 	@echo make transform  - dbt run: staging, core, analytics
@@ -44,12 +48,22 @@ build:
 migrate:
 	$(ETL) python -m scripts.migrate
 
-ingest:
+# Ingest luôn kiểm checksum file tải tay trước: file bị sửa thì dừng, không nạp.
+ingest: landing-verify
 ifeq ($(SOURCE),)
 	$(ETL_INGEST) python -m ingestion.cli run-all
 else
 	$(ETL_INGEST) python -m ingestion.cli run --source $(SOURCE)
 endif
+
+landing-register:
+ifeq ($(SOURCE),)
+	$(error Thieu SOURCE, vi du: make landing-register SOURCE=vaers)
+endif
+	$(ETL) python -m scripts.landing register --source $(SOURCE) --by "$(BY)"
+
+landing-verify:
+	$(ETL) python -m scripts.landing verify $(if $(SOURCE),--only $(SOURCE))
 
 mock:
 	$(COMPOSE) up -d --wait mock_server

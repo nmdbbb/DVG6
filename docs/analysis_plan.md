@@ -60,12 +60,19 @@ Bảng đối chiếu bắt buộc có trong báo cáo cuối:
 | Penicillin trong tổng dị ứng | 22% | | | |
 | Lệch do làm sạch | ~7% | | | |
 
-## 5. Quy tắc khử trùng lặp (đề xuất, Data Architect chốt)
+## 5. Quy tắc khử trùng lặp (`rule_version = 1`)
 
 Bài báo dùng phương pháp xác suất của một nghiên cứu khác và không công bố quy tắc cụ thể. Nhóm dùng quy tắc tất định, ghi rõ để người khác kiểm chứng được:
 
-> Hai báo cáo là trùng nhau khi **trùng toàn bộ**: nhóm tuổi, giới tính, bang, ngày tiêm, nhà sản xuất vắc xin, và **tập triệu chứng đã chuẩn hóa**.
+> Hai báo cáo là trùng nhau khi **trùng toàn bộ** sáu thuộc tính: nhóm tuổi, giới tính, bang, ngày tiêm, tập nhà sản xuất vắc xin, và **tập triệu chứng đã chuẩn hóa**.
 
-Giữ báo cáo có `VAERS_ID` nhỏ nhất (nộp sớm nhất), các bản còn lại đánh dấu là trùng và **không xóa khỏi `raw`** — chỉ loại ở tầng `core`. Số dòng trước/sau ghi vào [cleaning_log.md](cleaning_log.md).
+Định nghĩa chính xác (Transform cài đặt đúng từng chữ):
 
-Phải báo cáo **độ nhạy**: nếu đổi quy tắc (ví dụ bỏ điều kiện bang) thì tỉ lệ trùng lặp đổi bao nhiêu. Một con số 29% không có quy tắc kèm theo thì không kiểm chứng được.
+1. **Phạm vi so sánh:** chỉ các báo cáo đã qua bộ lọc của [data_contract.md §1](data_contract.md) (2021, COVID19, trong nước) và có ít nhất một triệu chứng.
+2. **Tập triệu chứng** = các `symptom_key` khác nhau của báo cáo, sau chuẩn hóa chính tả (`vaccination site` → `injection site`), so sánh nguyên tập; khác một phần tử là không trùng. **Tập nhà sản xuất** = các nhà sản xuất khác nhau trong dòng vắc xin COVID19 của báo cáo, so sánh nguyên tập.
+3. **Điều kiện đủ để xét trùng:** `age_group`, `sex` và `vax_date` đều đã biết. Báo cáo thiếu một trong ba **không bao giờ bị đánh dấu trùng** (thiếu thông tin thì không đủ bằng chứng để gộp, và coi UNKNOWN = UNKNOWN sẽ gộp nhầm hàng loạt). `state` không bắt buộc: hai báo cáo cùng `state = UNKNOWN` được coi là cùng giá trị.
+4. **Giữ lại:** trong mỗi nhóm trùng, giữ báo cáo có `VAERS_ID` nhỏ nhất, so sánh **như số nguyên** (không so chuỗi).
+5. **Không xóa khỏi `raw`.** Báo cáo bị loại ghi vào `core.report_duplicate_map(vaers_id, kept_vaers_id, rule_version)`, vắng mặt ở `fct_report` nhưng vẫn có ở `fct_report_raw`.
+6. Số dòng trước/sau ghi vào [cleaning_log.md](cleaning_log.md).
+
+Báo cáo **độ nhạy** bắt buộc, chạy lại với: (a) bỏ điều kiện bang; (b) thay nhóm tuổi bằng `AGE_YRS` chính xác; (c) bỏ điều kiện ngày tiêm. Ghi tỉ lệ trùng lặp của từng biến thể cạnh `rule_version = 1`. Một con số 29% không có quy tắc kèm theo thì không kiểm chứng được.
