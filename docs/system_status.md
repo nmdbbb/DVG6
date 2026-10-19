@@ -1,78 +1,86 @@
-# Hiện trạng hệ thống
+# Tình hình hệ thống
 
-Cập nhật 2026-10-19 bởi Data Architect. Tổng hợp từ `main`, `liem-dev` và `feat/openfda-crawler` (PR #38). PR #39 của Data Architect đã merge vào `main` (commit `16eaa91`).
+Đo trên máy Data Architect ngày 2026-10-19, sau `make up`, `make migrate`, `make dashboard` với code ở `main` (có migration 006/007). Đây là trạng thái **đang chạy**, không phải trạng thái repo.
 
-**Tóm lại:** khung hạ tầng M1–M4 chạy được đầu-cuối trên dữ liệu giả `source_demo`. Với dữ liệu VAERS thật mới có **hợp đồng dữ liệu** và **migration raw** trên `main`, còn **connector nạp** vẫn nằm ở hai branch chưa merge; staging, core, quality, phân tích và dashboard của VAERS chưa ai bắt đầu.
+**Tóm lại:** hệ thống chạy được đầu-cuối nhưng chỉ có dữ liệu **giả** (`source_demo`, 5.000 dòng). Bảng cho VAERS và openFDA đã được tạo nhưng **đều rỗng**; chưa có dữ liệu thật nào đi qua staging, core hay lên dashboard.
 
-## 1. Đã merge vào `main`
+## 1. Dịch vụ
 
-| Tầng | Có gì | Dùng dữ liệu |
+| Dịch vụ | Địa chỉ | Tình trạng |
 |---|---|---|
-| Hạ tầng | Docker Compose (db, etl, mock_server, api, web, pgadmin), Makefile, CI `lint` + `pipeline`, branch protection, CODEOWNERS | — |
-| Database | 5 migration (schema `raw`/`staging`/`core`/`analytics`/`meta`, bảng `meta.*`, bảng raw demo, profile, `source_mode`), 3 role phân quyền (`etl_writer`, `api_reader`, `analyst`) | — |
-| Ingestion | Khung connector (`base.py`, `loader.py`, `http_client.py`, `cli.py`, `registry.py`), chống nạp lại bằng `_row_hash`, lưu bản gốc từng trang vào `data/raw/` | `source_demo` |
-| Mock server | Phát lại snapshot live (HTML và JSON), giả lập trễ và giới hạn 60 request/phút, `make mock-check` so lô live với lô mock | `source_demo` |
-| Transform | dbt: `stg_source_demo__records` → `dim_entity`, `fct_main` → `v_measure_by_category_month` | `source_demo` |
-| Quality | `quality/runner.py`, `rules.yml` (3 check bắt buộc + bổ sung) và test dbt; ghi `meta.quality_run`, profile bảng, sinh `quality_report.md`; `make demo-break` chứng minh gate chặn pipeline | `source_demo` |
-| API | FastAPI: `/sources`, `/batches`, `/quality`, `/quality/runs`, `/layers`, catalog bảng và cột (đọc từ `COMMENT ON`) | mọi bảng |
-| Web | React: Tổng quan, Sức khỏe pipeline, Catalog; Khám phá và Phân tích còn là trang giữ chỗ (M6) | `source_demo` |
-| Data contract (PR #39) | Grain 13 bảng core, quy tắc NULL, quy ước ngày VAERS, quy tắc khử trùng lặp `rule_version=1`, `docs/system_status.md`, decision #30–#34 | VAERS |
-| Landing | `make landing-register` / `landing-verify` (`scripts/landing.py`, 8 test); `make ingest` kiểm sha256 file tải tay trước khi nạp | VAERS |
-| Migration | `006_vaers_raw_tables.sql` (3 bảng VAERS), `007_openfda_substances.sql`; `make reset` trên Postgres trống ra 7 migration, mọi cột raw có comment | VAERS, openFDA |
-| Tài liệu | business case, analysis plan (A1–A8), schema đề xuất, kế hoạch 36 issue (M5–M7) | VAERS |
+| Postgres 16 (`db`) | localhost:5432 | healthy |
+| mock_server | http://localhost:8001 | healthy |
+| API (FastAPI) | http://localhost:8000/docs | healthy |
+| Web (React) | http://localhost:5173 | HTTP 200 |
+| pgAdmin | profile `tools`, không bật mặc định | tắt |
 
-## 2. Đang chờ merge
+## 2. Database `qtdl`
 
-| Branch / PR | Người | Nội dung | Tình trạng |
+`meta.schema_version` có **7 migration** (001–007), chạy lại `make migrate` thì 0 mới.
+
+| Schema | Bảng / view | Số dòng | Nguồn dữ liệu |
 |---|---|---|---|
-| `liem-dev` | Duy Liem | 3 connector `vaers_data`, `vaers_symptoms`, `vaers_vax` đọc ZIP 2021 (cp1252, kiểm sha256), `ingestion/inspect_vaers.py`, `docs/vaers_ingestion.md`, 19 test, sửa healthcheck mock | **Chưa mở PR, chưa biết `006` đã nằm trên `main` và không được sửa nữa.** Đã nạp thật vào Postgres của Liem (symptoms 1.030.201 dòng). Chưa chạy `make mock-check` cho 3 nguồn |
-| `feat/openfda-crawler` (PR #38) | MinhAgain | Connector `openfda` (phân trang, `skip` ≤ 25.000), hash theo `spl_id`, mock JSON, test | Đã comment 2026-10-19 yêu cầu **xóa `006_openfda_substances.sql` và `README_PATCH.txt`**, rebase lên `main`; chưa có commit mới. Snapshot không phủ hết ~262 nghìn nhãn |
+| raw | `source_demo_records` | 5.000 | dữ liệu giả |
+| raw | `vaers_data`, `vaers_vax`, `vaers_symptoms` | **0** | chưa nạp |
+| raw | `openfda_substances` | **0** | chưa nạp |
+| staging | `stg_source_demo__records` (view) | 5.000 | giả |
+| core | `dim_entity` | 21 (20 thực thể + dòng unknown) | giả |
+| core | `fct_main` | 4.926 (mất 74 dòng thiếu `record_id` / trùng, trong ngưỡng 5%) | giả |
+| analytics | `v_measure_by_category_month` (view) | 309 | giả |
+| meta | `ingestion_batch` 1 · `ingestion_batch_row` 5.000 · `source` 1 · `quality_run` 22 · `table_profile` 9 · `column_profile` 15 | | |
 
-Số liệu nguồn VAERS 2021 (Liem đo): DATA 768.704 · SYMPTOMS 1.030.201 · VAX 813.432 dòng, trước khi lọc COVID19.
+Chưa tồn tại: mọi bảng `dim_*` / `fct_*` của VAERS (vaccine, symptom, allergen, age_group, sex, state, date, `fct_report*`, `report_duplicate_map`) và mọi view `v_ae_*` phục vụ phân tích.
 
-### Issue role 1 (`role:architect`)
+Phân quyền: 3 role `etl_writer`, `api_reader`, `analyst` được cấp lại sau mỗi lần migrate.
 
-| Issue | Trạng thái |
+## 3. Ingestion
+
+| Nguồn | Trong registry | Đã nạp | Ghi chú |
+|---|---|---|---|
+| `source_demo` | có | 1 lô `live` thành công, 5.000 dòng (2026-10-18) | chạy lại ra `new_rows=0` |
+| `vaers_data`, `vaers_symptoms`, `vaers_vax` | **không** | 0 | connector chưa có trong code đang chạy; bảng raw đã sẵn sàng |
+| `openfda` | **không** | 0 | như trên |
+
+- Đường mock: `make mock-check` cho `source_demo` đạt (số dòng và tập `_row_hash` khớp).
+- File tải tay: `data/landing/` **rỗng**, `docs/sources_landing.md` chưa có dòng nào. `make landing-verify` trả "0 file khớp checksum"; `make ingest` đã gọi nó trước khi nạp.
+- `data/raw/` chỉ có snapshot của `source_demo`.
+
+## 4. Chất lượng
+
+- Lần chạy `make quality` gần nhất: **22/22 check đạt** (test dbt + `rules.yml`), gồm khóa chính `dim_entity`, không mồ côi trong `fct_main`, đối chiếu số dòng raw → core.
+- Toàn bộ check chỉ nhắm vào bảng của `source_demo`. **Chưa có check nào cho dữ liệu VAERS** (miền giá trị, đối chiếu số dòng, tỉ lệ trùng lặp, chuẩn hóa dị ứng).
+- Cơ chế chặn đã chứng minh: `make demo-break` làm `make quality` exit 1.
+- `make test`: 40 test đạt. `make lint`: sạch.
+
+## 5. API và dashboard
+
+| Endpoint | Tình trạng | Ghi chú |
+|---|---|---|
+| `/sources`, `/batches`, `/quality`, `/quality/runs`, `/layers` | chạy | trả dữ liệu của `source_demo` |
+| `/catalog/tables`, `/catalog/tables/{name}/columns` | chạy | liệt kê **16 bảng/view**, gồm 4 bảng VAERS/openFDA mới với `row_count = 0` |
+| `/explore/facts`, `/dimensions/{dim}`, `/analysis/*` | **404** | chưa cài |
+
+| Trang web | Tình trạng |
 |---|---|
-| #2 Data contract và star schema | Đã viết và merge. Còn thiếu chữ ký Analysis Lead cho decision #31 trước khi đóng |
-| #3 Migration raw | Đã merge (006 + 007). Chưa kiểm Catalog hiện 4 bảng mới trên dashboard thật; chờ connector merge để thử nạp |
-| #4 `make landing-register` | Đã merge. Chưa đăng ký file thật vào `sources_landing.md` (dòng của Liem nằm ở `liem-dev`) |
-| #34 Runbook và nghiệm thu tái tạo | Bị block bởi staging/core VAERS |
-| #37 Bật `enforce_admins` | Bị block đến khi cả nhóm vào repo |
+| Tổng quan, Sức khỏe pipeline, Catalog | chạy, hiển thị dữ liệu giả và 4 bảng raw mới (rỗng) |
+| Khám phá, Phân tích | trang giữ chỗ ("M6") |
 
-Chưa đóng issue nào trên GitHub.
+## 6. Phân tích
 
-## 3. Chưa có
+`analysis/notebooks/` và `analysis/reports/` trống. Chưa có notebook, bảng kết quả hay hình nào.
 
-| Việc | Issue | Phụ thuộc | Ghi chú |
-|---|---|---|---|
-| Staging VAERS + openFDA, unpivot 5 cột triệu chứng | #11, #12 | `liem-dev` và PR #38 phải merge | **Đường găng.** Staging phải lọc bằng `EXISTS` trên `meta.ingestion_batch_row` (xem `vaers_ingestion.md`) |
-| 6 dimension, `dim_allergen` (từ điển openFDA) | #13, #14 | #11, #12 | |
-| `fct_report` + khử trùng lặp, 3 fact con, `fct_report_raw`, `report_duplicate_map` | #15, #16 | #13, #14 | Theo `analysis_plan.md` §5 |
-| Check chất lượng (miền giá trị, đối chiếu số dòng, trùng lặp, chuẩn hóa dị ứng, ngưỡng thống kê) | #17–#20 | #15, #16 | `rules.yml` vẫn chỉ có check của `source_demo` |
-| Analytics view cho từng biểu đồ | #22 | #16 | |
-| Phân tích A1–A8 (tần suất, heatmap, chi-square, phân cụm, ARM, PCA, tác động làm sạch) | #23–#29 | #22 | `analysis/notebooks/` còn trống |
-| API `/dimensions`, `/explore/facts`, `/analysis/*`; trang Khám phá, Phân tích; Overview và Catalog với nguồn thật | #21, #30–#33 | #22, #29 | |
-| `mock_server` phát lại snapshot VAERS lớn; hoàn thiện `sources.md` | #6, #8, #9 | `liem-dev`, PR #38 | |
-| Gỡ `source_demo` khỏi registry, CI và dbt | #10 | #11–#16 chạy được | Đến lúc đó CI vẫn dùng `SOURCE=source_demo` vì ZIP VAERS không có trên CI |
-| Runbook và nghiệm thu tái tạo trên máy trống | #34 | tất cả trên | Hiện `make all` chỉ tái tạo được phần `source_demo` |
-| Báo cáo cuối, hình và bảng | #35, #36 | #29 | |
-| Bật `enforce_admins` | #37 | cả nhóm vào repo | |
+## 7. Để chạy dữ liệu VAERS thật, hệ thống còn thiếu
 
-## 4. Rủi ro và điểm cần quyết
+1. Connector VAERS và openFDA trong registry, cộng file ZIP đã đăng ký bằng `make landing-register SOURCE=vaers`.
+2. Model staging và core cho VAERS, kèm khử trùng lặp theo `rule_version=1`.
+3. Check chất lượng cho dữ liệu VAERS.
+4. View `analytics`, API `/explore` và `/analysis`, hai trang web còn lại, các notebook A1–A8.
+5. Gỡ `source_demo` khỏi registry, dbt và CI khi bước 1–3 chạy được.
 
-1. **Không có mẫu số.** `data.cdc.gov` trả 403 nên chỉ tính được tần suất tương đối, không tính được tỉ lệ trên 100.000 liều (decision #24). Báo cáo không được dùng chữ "nguy cơ" hay "gây ra".
-2. **Tên cột raw VAERS viết hoa, có dấu ngoặc kép** (decision #29 của Liem, trái với chữ "viết thường" trong issue #3). Staging phải đổi tên; đã chấp nhận vì connector đã nạp hàng triệu dòng.
-3. **Lô `failed` trong raw của Liem:** 874.900 dòng symptoms gắn lô gốc `failed` nhưng hash đã được xác nhận trong lô `success`. Staging nào lọc qua `_batch_id` sẽ mất 85% dữ liệu.
-4. **CI không chạy được VAERS** (không có ZIP): mọi thay đổi VAERS chỉ được kiểm bằng test nhỏ và chạy tay. Đừng coi CI xanh là bằng chứng VAERS đúng.
-5. **Khử trùng lặp bảo thủ** (decision #31): tỉ lệ trùng lặp có thể thấp hơn 29% của bài báo; phải báo cáo kèm độ nhạy.
-6. **Số 29 trong decision_log** trên `liem-dev` và số 30–34 trên PR #39 đánh liền nhau; hai branch merge theo thứ tự nào cũng xung đột nhỏ ở cuối bảng, giữ cả hai bộ dòng.
-
-## 5. Cách xem lại
+## 8. Tái hiện số liệu trên
 
 ```bash
-make up && make migrate     # 7 migration, 5 bảng raw (cần 006/007 từ main) (source_demo + 3 VAERS + openfda)
-make landing-verify         # kiểm sha256 file tải tay
-make all                    # pipeline source_demo đầu-cuối
-make dashboard              # http://localhost:5173
+make up && make migrate && make ingest && make transform && make quality && make dashboard
+docker compose exec db psql -U qtdl -d qtdl -c "select * from meta.schema_version;"
+curl localhost:8000/catalog/tables
 ```
