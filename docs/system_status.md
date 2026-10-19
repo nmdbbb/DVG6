@@ -1,8 +1,8 @@
 # Hiện trạng hệ thống
 
-Cập nhật 2026-10-18 bởi Data Architect. Tổng hợp từ `main`, `liem-dev`, `feat/openfda-crawler` (PR #38) và `feat/architect-m5` (PR #39).
+Cập nhật 2026-10-19 bởi Data Architect. Tổng hợp từ `main`, `liem-dev` và `feat/openfda-crawler` (PR #38). PR #39 của Data Architect đã merge vào `main` (commit `16eaa91`).
 
-**Tóm lại:** khung hạ tầng M1–M4 chạy được đầu-cuối trên dữ liệu giả `source_demo`. Với dữ liệu VAERS thật mới có **tầng nạp (raw)** và **hợp đồng dữ liệu**; staging, core, quality, phân tích và dashboard của VAERS chưa ai bắt đầu.
+**Tóm lại:** khung hạ tầng M1–M4 chạy được đầu-cuối trên dữ liệu giả `source_demo`. Với dữ liệu VAERS thật mới có **hợp đồng dữ liệu** và **migration raw** trên `main`, còn **connector nạp** vẫn nằm ở hai branch chưa merge; staging, core, quality, phân tích và dashboard của VAERS chưa ai bắt đầu.
 
 ## 1. Đã merge vào `main`
 
@@ -16,23 +16,37 @@ Cập nhật 2026-10-18 bởi Data Architect. Tổng hợp từ `main`, `liem-de
 | Quality | `quality/runner.py`, `rules.yml` (3 check bắt buộc + bổ sung) và test dbt; ghi `meta.quality_run`, profile bảng, sinh `quality_report.md`; `make demo-break` chứng minh gate chặn pipeline | `source_demo` |
 | API | FastAPI: `/sources`, `/batches`, `/quality`, `/quality/runs`, `/layers`, catalog bảng và cột (đọc từ `COMMENT ON`) | mọi bảng |
 | Web | React: Tổng quan, Sức khỏe pipeline, Catalog; Khám phá và Phân tích còn là trang giữ chỗ (M6) | `source_demo` |
+| Data contract (PR #39) | Grain 13 bảng core, quy tắc NULL, quy ước ngày VAERS, quy tắc khử trùng lặp `rule_version=1`, `docs/system_status.md`, decision #30–#34 | VAERS |
+| Landing | `make landing-register` / `landing-verify` (`scripts/landing.py`, 8 test); `make ingest` kiểm sha256 file tải tay trước khi nạp | VAERS |
+| Migration | `006_vaers_raw_tables.sql` (3 bảng VAERS), `007_openfda_substances.sql`; `make reset` trên Postgres trống ra 7 migration, mọi cột raw có comment | VAERS, openFDA |
 | Tài liệu | business case, analysis plan (A1–A8), schema đề xuất, kế hoạch 36 issue (M5–M7) | VAERS |
 
 ## 2. Đang chờ merge
 
 | Branch / PR | Người | Nội dung | Tình trạng |
 |---|---|---|---|
-| `feat/architect-m5` (PR #39) | Data Architect | Data contract chốt (grain 13 bảng, quy tắc NULL, quy ước ngày), quy tắc khử trùng lặp `rule_version=1`, `make landing-register` / `landing-verify`, migration 006 + 007, decision #30–#34 | Đã chạy `make reset` trên Postgres trống: 7 migration, mọi cột raw có comment; `make test` 40 test đạt; lint sạch. Chờ 1 approve; decision #31 chờ Analysis Lead ký |
-| `liem-dev` | Duy Liem | 3 connector `vaers_data`, `vaers_symptoms`, `vaers_vax` đọc ZIP 2021 (cp1252, kiểm sha256), `ingestion/inspect_vaers.py`, `docs/vaers_ingestion.md`, 19 test, sửa healthcheck mock | **Chưa mở PR.** Đã nạp thật vào Postgres của Liem (symptoms 1.030.201 dòng). Chưa chạy `make mock-check` cho 3 nguồn |
-| `feat/openfda-crawler` (PR #38) | MinhAgain | Connector `openfda` (phân trang, `skip` ≤ 25.000), hash theo `spl_id`, mock JSON, test | Phải **xóa `006_openfda_substances.sql` và `README_PATCH.txt`** (đã có 007 ở PR #39). Snapshot không phủ hết ~262 nghìn nhãn |
+| `liem-dev` | Duy Liem | 3 connector `vaers_data`, `vaers_symptoms`, `vaers_vax` đọc ZIP 2021 (cp1252, kiểm sha256), `ingestion/inspect_vaers.py`, `docs/vaers_ingestion.md`, 19 test, sửa healthcheck mock | **Chưa mở PR, chưa biết `006` đã nằm trên `main` và không được sửa nữa.** Đã nạp thật vào Postgres của Liem (symptoms 1.030.201 dòng). Chưa chạy `make mock-check` cho 3 nguồn |
+| `feat/openfda-crawler` (PR #38) | MinhAgain | Connector `openfda` (phân trang, `skip` ≤ 25.000), hash theo `spl_id`, mock JSON, test | Đã comment 2026-10-19 yêu cầu **xóa `006_openfda_substances.sql` và `README_PATCH.txt`**, rebase lên `main`; chưa có commit mới. Snapshot không phủ hết ~262 nghìn nhãn |
 
 Số liệu nguồn VAERS 2021 (Liem đo): DATA 768.704 · SYMPTOMS 1.030.201 · VAX 813.432 dòng, trước khi lọc COVID19.
+
+### Issue role 1 (`role:architect`)
+
+| Issue | Trạng thái |
+|---|---|
+| #2 Data contract và star schema | Đã viết và merge. Còn thiếu chữ ký Analysis Lead cho decision #31 trước khi đóng |
+| #3 Migration raw | Đã merge (006 + 007). Chưa kiểm Catalog hiện 4 bảng mới trên dashboard thật; chờ connector merge để thử nạp |
+| #4 `make landing-register` | Đã merge. Chưa đăng ký file thật vào `sources_landing.md` (dòng của Liem nằm ở `liem-dev`) |
+| #34 Runbook và nghiệm thu tái tạo | Bị block bởi staging/core VAERS |
+| #37 Bật `enforce_admins` | Bị block đến khi cả nhóm vào repo |
+
+Chưa đóng issue nào trên GitHub.
 
 ## 3. Chưa có
 
 | Việc | Issue | Phụ thuộc | Ghi chú |
 |---|---|---|---|
-| Staging VAERS + openFDA, unpivot 5 cột triệu chứng | #11, #12 | PR #39, `liem-dev`, PR #38 | **Đường găng.** Staging phải lọc bằng `EXISTS` trên `meta.ingestion_batch_row` (xem `vaers_ingestion.md`) |
+| Staging VAERS + openFDA, unpivot 5 cột triệu chứng | #11, #12 | `liem-dev` và PR #38 phải merge | **Đường găng.** Staging phải lọc bằng `EXISTS` trên `meta.ingestion_batch_row` (xem `vaers_ingestion.md`) |
 | 6 dimension, `dim_allergen` (từ điển openFDA) | #13, #14 | #11, #12 | |
 | `fct_report` + khử trùng lặp, 3 fact con, `fct_report_raw`, `report_duplicate_map` | #15, #16 | #13, #14 | Theo `analysis_plan.md` §5 |
 | Check chất lượng (miền giá trị, đối chiếu số dòng, trùng lặp, chuẩn hóa dị ứng, ngưỡng thống kê) | #17–#20 | #15, #16 | `rules.yml` vẫn chỉ có check của `source_demo` |
@@ -57,7 +71,7 @@ Số liệu nguồn VAERS 2021 (Liem đo): DATA 768.704 · SYMPTOMS 1.030.201 ·
 ## 5. Cách xem lại
 
 ```bash
-make up && make migrate     # 7 migration, 5 bảng raw (source_demo + 3 VAERS + openfda)
+make up && make migrate     # 7 migration, 5 bảng raw (cần 006/007 từ main) (source_demo + 3 VAERS + openfda)
 make landing-verify         # kiểm sha256 file tải tay
 make all                    # pipeline source_demo đầu-cuối
 make dashboard              # http://localhost:5173
