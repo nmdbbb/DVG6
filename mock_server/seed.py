@@ -81,7 +81,7 @@ def load(source: str) -> Snapshot | None:
 
     columns = list(connector.columns)
     for rec in records:
-        columns.extend(k for k in rec if k not in columns)
+        columns.extend(k for k in rec if not k.startswith("_") and k not in columns)
 
     snap = Snapshot(source, meta["batch_id"], meta["finished_at"], path, columns, records)
     _cache[path] = (mtime, snap)

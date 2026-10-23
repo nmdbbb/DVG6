@@ -4,6 +4,9 @@ Mỗi tầng kết nối bằng đúng role của nó (db/roles.sql):
 - admin      : migration, reset (POSTGRES_USER)
 - etl_writer : ingestion, transform, quality
 - api_reader : API (xem api/deps.py)
+
+Mọi lệnh ở đây chạy trên warehouse **local**. Kho dùng chung (decision #35) chỉ nhận dữ liệu
+qua `scripts/publish.py`; không lệnh nào khác được trỏ vào đó.
 """
 
 from __future__ import annotations
@@ -20,6 +23,27 @@ _ROLE_PASSWORD_ENV = {
     "api_reader": "API_READER_PASSWORD",
     "analyst": "ANALYST_PASSWORD",
 }
+
+# Host được coi là warehouse local. "db" là tên service trong docker-compose.yml.
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "db", ""})
+
+
+def is_local_host(host: str) -> bool:
+    return host.strip().lower() in LOCAL_HOSTS
+
+
+def assert_local(action: str) -> None:
+    """Dừng nếu POSTGRES_HOST không phải warehouse local.
+
+    Chặn tai nạn kiểu đặt POSTGRES_HOST trỏ vào kho dùng chung rồi chạy `make reset` —
+    một lệnh xóa sạch dữ liệu của cả nhóm.
+    """
+    host = os.environ.get("POSTGRES_HOST", "localhost")
+    if not is_local_host(host):
+        raise SystemExit(
+            f"TỪ CHỐI: '{action}' chỉ được chạy trên warehouse local, nhưng POSTGRES_HOST={host!r}.\n"
+            "Kho dùng chung chỉ nhận dữ liệu qua `make publish`. Xem docs/runbook.md."
+        )
 
 
 def conninfo(role: str = "admin") -> str:

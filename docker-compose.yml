@@ -9,6 +9,8 @@ x-db-env: &db-env
   ETL_WRITER_PASSWORD: ${ETL_WRITER_PASSWORD:-change_me}
   API_READER_PASSWORD: ${API_READER_PASSWORD:-change_me}
   ANALYST_PASSWORD: ${ANALYST_PASSWORD:-change_me}
+  # Có giá trị => API đọc kho dùng chung thay vì Postgres local (lúc deploy dashboard).
+  API_DATABASE_URL: ${API_DATABASE_URL:-}
 
 services:
   db:
@@ -37,6 +39,10 @@ services:
       # live = nguồn thật (đường chính) | mock = mock_server phát lại data/raw (đường dự phòng)
       SOURCE_MODE: ${SOURCE_MODE:-live}
       MOCK_SERVER_URL: http://mock_server:8001
+      # Kho dùng chung — chỉ `make publish` đọc biến này.
+      SHARED_DATABASE_URL: ${SHARED_DATABASE_URL:-}
+      LANDING_RELEASE_REPO: ${LANDING_RELEASE_REPO:-nmdbbb/DVG6}
+      LANDING_RELEASE_TAG: ${LANDING_RELEASE_TAG:-landing}
     volumes:
       - .:/app
     ports:

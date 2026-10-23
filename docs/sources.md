@@ -72,10 +72,24 @@ Trang tải của VAERS (`/eSubDownload/index.jsp?fn=2021VAERSData.zip`) trả v
 
 Quy trình nhóm dùng:
 
+0. **Người mới vào nhóm: chỉ cần `make landing-fetch`** — file đã có sẵn trên GitHub Release,
+   không phải vào trang CDC. Các bước dưới chỉ dành cho người tải tay lần đầu.
 1. **Một người tải tay một lần**, chọn file năm cần, nhập mã xác thực.
 2. Đặt file ZIP vào `data/landing/vaers/<ngày>/2021VAERSData.zip` (thư mục `data/` không commit).
-3. Chạy `python -m ingestion.inspect_vaers <đường-dẫn-ZIP>`; ghi kích thước, **sha256** và ngày tải vào `docs/sources_landing.md`, đăng ký đường dẫn/checksum/encoding trong `ingestion/sources/vaers_landing.json`. Lệnh `make landing-register` chưa được triển khai.
-4. Chạy riêng từng connector: `make ingest SOURCE=vaers_data`, `make ingest SOURCE=vaers_symptoms`, `make ingest SOURCE=vaers_vax`. Mỗi connector kiểm sha256 trước khi đọc CSV. Hướng dẫn không dùng make và preview không cần Docker: [vaers_ingestion.md](vaers_ingestion.md).
+3. `make landing-register SOURCE=vaers` ghi tên file, kích thước, **sha256** và ngày tải vào
+   [sources_landing.md](sources_landing.md) — đây là sổ đăng ký của cả nhóm.
+4. `make landing-upload SOURCE=vaers` đẩy file lên GitHub Release để 6 người còn lại chỉ cần
+   `make landing-fetch`, không ai phải đụng CAPTCHA của CDC nữa.
+5. `python -m ingestion.inspect_vaers <đường-dẫn-ZIP>` ghi đường dẫn, checksum và encoding vào
+   `ingestion/sources/vaers_landing.json` — manifest mà ba connector đọc.
+6. Chạy riêng từng connector: `make ingest SOURCE=vaers_data`, `SOURCE=vaers_symptoms`,
+   `SOURCE=vaers_vax`. Mỗi connector tự kiểm sha256 trước khi đọc CSV. Cách chạy không cần make
+   và cách xem trước dữ liệu: [vaers_ingestion.md](vaers_ingestion.md).
+
+> **Đang có hai sổ đăng ký cho cùng một file:** `sources_landing.md` (bước 3, cho cả nhóm) và
+> `vaers_landing.json` (bước 5, cho connector). Hai chỗ ghi cùng một sha256 nên có thể lệch nhau.
+> Cần gộp làm một — xem issue về việc này.
+
 
 Bản ZIP là **bản gốc bất biến** của nguồn: connector lưu từng khối CSV thành trang trong `data/raw/vaers/<ngày>/<batch_id>/`, nên mock_server phát lại được và `make mock-check` vẫn khớp `_row_hash` như mọi nguồn khác.
 
