@@ -77,78 +77,16 @@ Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải
 
 ## Kho Postgres dùng chung
 
-Warehouse **local** là nơi làm việc: ingest, transform, quality, sửa model. Mỗi người một bản,
-`make reset` thoải mái. **Kho dùng chung** chỉ là bản sao chỉ-đọc để cả nhóm và dashboard nhìn
-cùng một số liệu (decision #29).
-
-| | Warehouse local | Kho dùng chung |
-|---|---|---|
-| Ở đâu | Docker trên máy mỗi người | Neon / Supabase |
-| Có schema nào | `raw`, `staging`, `core`, `analytics`, `meta` | `core`, `analytics`, `meta` |
-| Ai ghi | chính người đó | chỉ `make publish` |
-| Lệnh chạy lên nó | tất cả | **chỉ** `make publish` |
-
-`raw` không lên kho chung vì cột `SYMPTOM_TEXT` và `_payload` làm nó nặng hơn 1 GB, vượt gói miễn
-phí 500 MB. `staging` là view, dựng lại được từ raw. Bảng `meta.ingestion_batch_row` cũng bị bỏ
-qua: vài triệu dòng, chỉ dùng cho `make mock-check` ở local.
-
-### Kho chung hiện tại
-
-| | |
-|---|---|
-| Nhà cung cấp | Neon, gói miễn phí (500 MB) |
-| Project | `DVG6`, branch `production` |
-| Region | `ap-southeast-1` (Singapore) |
-| PostgreSQL | 18 |
-| Database | `neondb` |
-| Tài khoản | đăng nhập bằng GitHub `nmdbbb` — Data Architect giữ |
-| Dung lượng đang dùng | 8,6 MB (2026-10-23, còn là dữ liệu giả `source_demo`) |
-
-Connection string nằm trong `.env` của người publish, **không bao giờ commit**. Role `analyst`
-và `api_reader` trên kho chung dùng mật khẩu trong `.env` của người đó; muốn chia cho người khác
-thì gửi riêng, không đưa vào repo hay issue.
-
-Theo dõi dung lượng ở Neon console. Khi nạp VAERS thật, nếu vượt 400 MB thì phải bàn lại phạm vi
-dữ liệu trước khi đụng trần 500 MB.
-
-### Dựng kho chung lần đầu
-
-1. Tạo một project Postgres trên [Neon](https://neon.com) (gói miễn phí, 0,5 GB). Chọn region gần
-   Việt Nam, ví dụ Singapore.
-2. Copy connection string, dán vào `.env` của người sẽ publish:
-   ```
-   SHARED_DATABASE_URL=postgresql://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/qtdl?sslmode=require
-   ```
-3. `make publish`
-
-Không cần `make migrate` trên kho chung: `make publish` chép sẵn cả cấu trúc lẫn dữ liệu.
-
-### Publish
+Warehouse local là nơi làm việc; kho dùng chung (Neon) là bản sao chỉ-đọc của `core`, `analytics`,
+`meta` để cả nhóm và dashboard nhìn cùng một số liệu.
 
 ```bash
-make publish DRY_RUN=1   # xem sẽ đẩy bảng nào, bao nhiêu dòng — không ghi gì
-make publish             # đẩy thật
+make publish DRY_RUN=1   # xem sẽ đẩy gì, không ghi
+make publish             # đẩy thật, sau khi make quality xanh
 ```
 
-Mỗi lần publish **thay toàn bộ** ba schema trên kho chung. Không ai sửa tay trên đó; muốn đổi số
-liệu thì chạy lại pipeline local rồi publish lại. Sau khi nạp xong, lệnh tự so số dòng từng bảng
-giữa hai bên và exit 1 nếu lệch.
-
-Ai publish: **Data Architect**, sau khi `make quality` xanh. Publish dữ liệu chưa qua quality gate
-là đưa số sai cho cả nhóm.
-
-### Dashboard đọc kho chung
-
-Đặt `API_DATABASE_URL` (cùng connection string, nhưng dùng role `api_reader`) rồi chạy API như
-bình thường. Để trống thì API đọc Postgres local — đây là mặc định khi dev.
-
-### Chốt chặn an toàn
-
-- `make reset`, `make migrate`, `make ingest` **từ chối chạy** nếu `POSTGRES_HOST` không phải host
-  local. Không ai lỡ tay xóa sạch kho chung bằng `make reset`.
-- `make publish` từ chối nếu `SHARED_DATABASE_URL` trỏ vào host local (trừ khi thêm
-  `--allow-local-target`, chỉ dùng khi tự kiểm thử đường publish).
-- `SHARED_DATABASE_URL` chứa mật khẩu nên chỉ nằm trong `.env`, không bao giờ commit.
+Chi tiết đầy đủ — thông tin kho, cách kết nối cho từng role, hạn mức, lỗi thường gặp, cách đổi mật
+khẩu — ở **[kho_du_lieu.md](kho_du_lieu.md)**.
 
 ## Branch protection
 

@@ -104,6 +104,7 @@ Warehouse local là bản làm việc đầy đủ 5 schema. Kho dùng chung (Ne
 - Chỉ Data Architect publish, và chỉ sau khi `make quality` xanh.
 - Không ai được `INSERT`/`UPDATE` trực tiếp trên kho chung: mỗi lần publish thay toàn bộ ba schema.
 - `raw` và `staging` không có trên kho chung. Truy vết một dòng `core` về `raw` phải làm ở local.
+- Cách kết nối và vận hành kho chung: [kho_du_lieu.md](kho_du_lieu.md).
 - Số liệu trong báo cáo phải lấy từ kho chung (hoặc từ local đã publish cùng một lần chạy), để cả
   nhóm trích cùng một con số.
 

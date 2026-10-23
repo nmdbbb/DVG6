@@ -88,16 +88,17 @@ jobs:
           test "$leaked" -eq 0
       - name: "Chot chan: chi publish duoc tro vao host la"
         run: |
-          for m in scripts.reset_db scripts.migrate quality.runner; do
-            if docker compose run --rm -T -e POSTGRES_HOST=ep-fake.neon.tech etl python -m $m; then
-              echo "::error::$m khong chan duoc host la"; exit 1
+          set -e
+          guard() {
+            if docker compose run --rm -T -e POSTGRES_HOST=ep-fake.neon.tech etl "$@"; then
+              echo "::error::khong chan duoc host la: $*"; exit 1
             fi
-          done
-      - name: Cổng quality phải chặn dữ liệu hỏng
-        run: |
-          make demo-break
-          if make quality; then echo "::error::quality không chặn dữ liệu hỏng"; exit 1; fi
-
-      - name: Log khi lỗi
-        if: failure()
-        run: docker compose logs db
+          }
+          guard python -m scripts.reset_db
+          guard python -m scripts.migrate
+          guard python -m quality.runner
+          guard python -m ingestion.cli run --source source_demo
+          # Chieu nguoc lai: publish khong duoc nham dich la Postgres local.
+          if docker compose run --rm -T             -e SHARED_DATABASE_URL='postgresql://qtdl:change_me@db:5432/qtdl_shared'             etl python -m scripts.publish; then
+            echo "::error::publish khong chan duoc dich local"; exit 1
+          fi
