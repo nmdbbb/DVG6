@@ -96,7 +96,18 @@ Ràng buộc "không được NULL" phải có test `not_null` trong `schema.yml
 - Migration mới là file mới; không sửa file đã merge (CI bắt checksum lệch).
 - Sửa ngoài thư mục mình sở hữu thì phải hỏi người sở hữu (bảng phân vai trong README).
 
-## 7. Hai đường lấy dữ liệu
+## 7. Kho dùng chung
+
+Warehouse local là bản làm việc đầy đủ 5 schema. Kho dùng chung (Neon) là **bản sao chỉ-đọc** của
+`core`, `analytics`, `meta`, cập nhật bằng `make publish` (decision #29, #30).
+
+- Chỉ Data Architect publish, và chỉ sau khi `make quality` xanh.
+- Không ai được `INSERT`/`UPDATE` trực tiếp trên kho chung: mỗi lần publish thay toàn bộ ba schema.
+- `raw` và `staging` không có trên kho chung. Truy vết một dòng `core` về `raw` phải làm ở local.
+- Số liệu trong báo cáo phải lấy từ kho chung (hoặc từ local đã publish cùng một lần chạy), để cả
+  nhóm trích cùng một con số.
+
+## 8. Hai đường lấy dữ liệu
 
 - `live` là đường chính; mọi lô live lưu bản gốc từng trang vào `data/raw/<source>/<ngày>/<batch_id>/` trước khi parse.
 - `mock` chỉ phát lại bản gốc đó qua `mock_server`; không sinh dữ liệu giả, không sửa bản gốc (sha256 kiểm khi nạp).

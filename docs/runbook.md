@@ -47,6 +47,7 @@ Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải
 | `make quality` | `dbt test` + `quality/rules.yml`, ghi `meta.quality_run`, profile bảng, sinh `docs/quality_report.md` | `Quality gate passed.`, exit 0 |
 | `make test` | pytest (API trên database thật, ingestion, mock server) | `passed` |
 | `make demo-break` | Chèn một dòng mồ côi vào `core.fct_main` | `make quality` sau đó phải exit 1; `make transform` để sửa |
+| `make publish` | Đẩy `core` + `analytics` + `meta` lên kho dùng chung | in `KHỚP: N bảng, M dòng`, exit 0 |
 
 ## Lỗi thường gặp
 
@@ -73,6 +74,62 @@ Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải
 - `docker compose --profile tools up -d pgadmin` — pgAdmin tại http://localhost:5050
 - `make down` — dừng mọi container (dữ liệu giữ trong volume `pgdata`); `docker compose down -v` để xóa luôn volume
 - Sinh lại type cho frontend sau khi đổi API: `make dashboard` rồi `cd web && npm run gen:api`
+
+## Kho Postgres dùng chung
+
+Warehouse **local** là nơi làm việc: ingest, transform, quality, sửa model. Mỗi người một bản,
+`make reset` thoải mái. **Kho dùng chung** chỉ là bản sao chỉ-đọc để cả nhóm và dashboard nhìn
+cùng một số liệu (decision #29).
+
+| | Warehouse local | Kho dùng chung |
+|---|---|---|
+| Ở đâu | Docker trên máy mỗi người | Neon / Supabase |
+| Có schema nào | `raw`, `staging`, `core`, `analytics`, `meta` | `core`, `analytics`, `meta` |
+| Ai ghi | chính người đó | chỉ `make publish` |
+| Lệnh chạy lên nó | tất cả | **chỉ** `make publish` |
+
+`raw` không lên kho chung vì cột `SYMPTOM_TEXT` và `_payload` làm nó nặng hơn 1 GB, vượt gói miễn
+phí 500 MB. `staging` là view, dựng lại được từ raw. Bảng `meta.ingestion_batch_row` cũng bị bỏ
+qua: vài triệu dòng, chỉ dùng cho `make mock-check` ở local.
+
+### Dựng kho chung lần đầu
+
+1. Tạo một project Postgres trên [Neon](https://neon.com) (gói miễn phí, 0,5 GB). Chọn region gần
+   Việt Nam, ví dụ Singapore.
+2. Copy connection string, dán vào `.env` của người sẽ publish:
+   ```
+   SHARED_DATABASE_URL=postgresql://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/qtdl?sslmode=require
+   ```
+3. `make publish`
+
+Không cần `make migrate` trên kho chung: `make publish` chép sẵn cả cấu trúc lẫn dữ liệu.
+
+### Publish
+
+```bash
+make publish DRY_RUN=1   # xem sẽ đẩy bảng nào, bao nhiêu dòng — không ghi gì
+make publish             # đẩy thật
+```
+
+Mỗi lần publish **thay toàn bộ** ba schema trên kho chung. Không ai sửa tay trên đó; muốn đổi số
+liệu thì chạy lại pipeline local rồi publish lại. Sau khi nạp xong, lệnh tự so số dòng từng bảng
+giữa hai bên và exit 1 nếu lệch.
+
+Ai publish: **Data Architect**, sau khi `make quality` xanh. Publish dữ liệu chưa qua quality gate
+là đưa số sai cho cả nhóm.
+
+### Dashboard đọc kho chung
+
+Đặt `API_DATABASE_URL` (cùng connection string, nhưng dùng role `api_reader`) rồi chạy API như
+bình thường. Để trống thì API đọc Postgres local — đây là mặc định khi dev.
+
+### Chốt chặn an toàn
+
+- `make reset`, `make migrate`, `make ingest` **từ chối chạy** nếu `POSTGRES_HOST` không phải host
+  local. Không ai lỡ tay xóa sạch kho chung bằng `make reset`.
+- `make publish` từ chối nếu `SHARED_DATABASE_URL` trỏ vào host local (trừ khi thêm
+  `--allow-local-target`, chỉ dùng khi tự kiểm thử đường publish).
+- `SHARED_DATABASE_URL` chứa mật khẩu nên chỉ nằm trong `.env`, không bao giờ commit.
 
 ## Branch protection
 

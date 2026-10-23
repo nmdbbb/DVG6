@@ -2,7 +2,7 @@
 
 > File sinh tự động bởi `make quality` (quality/runner.py). Không sửa tay.
 
-- Lần chạy: `1be486c2-97f5-41e5-b238-b0bf02b00daf` lúc 2026-10-05 13:42 UTC
+- Lần chạy: `6208f86a-11fa-4eef-979b-580992db7ed0` lúc 2026-10-23 01:29 UTC
 - Tổng check: 22 · error fail: **0** · warning fail: **0**
 - Kết luận: Đạt — pipeline được đi tiếp
 
@@ -29,4 +29,4 @@
 | PASS | warning | rules | `fct_main_measure_outlier_rate` | 0.0019 | <= 0.005 |
 | PASS | warning | rules | `fct_main_null_rate_measure` | 0.0177 | <= 0.05 |
 | PASS | warning | rules | `fct_main_unknown_entity_rate` | 0.0049 | <= 0.01 |
-| PASS | warning | rules | `latest_batch_freshness_days` | 0.0004 | <= 7 |
+| PASS | warning | rules | `latest_batch_freshness_days` | 0.0001 | <= 7 |
