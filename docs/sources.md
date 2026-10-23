@@ -72,10 +72,13 @@ Trang tải của VAERS (`/eSubDownload/index.jsp?fn=2021VAERSData.zip`) trả v
 
 Quy trình nhóm dùng:
 
+0. **Người mới vào nhóm: chỉ cần `make landing-fetch`** — file đã có sẵn trên GitHub Release,
+   không phải vào trang CDC. Các bước dưới chỉ dành cho người tải tay lần đầu.
 1. **Một người tải tay một lần**, chọn file năm cần, nhập mã xác thực.
 2. Đặt file ZIP vào `data/landing/vaers/<ngày>/2021VAERSData.zip` (thư mục `data/` không commit).
 3. Chạy `make landing-register SOURCE=vaers` để ghi tên file, kích thước, **sha256** và ngày tải vào `docs/sources_landing.md`.
-4. `make ingest SOURCE=vaers` đọc ZIP từ landing, kiểm sha256 khớp với bản đã đăng ký, rồi mới parse.
+4. `make landing-upload SOURCE=vaers` đẩy file lên GitHub Release để cả nhóm dùng chung.
+5. `make ingest SOURCE=vaers` đọc ZIP từ landing, kiểm sha256 khớp với bản đã đăng ký, rồi mới parse.
 
 Bản ZIP là **bản gốc bất biến** của nguồn: connector lưu từng khối CSV thành trang trong `data/raw/vaers/<ngày>/<batch_id>/`, nên mock_server phát lại được và `make mock-check` vẫn khớp `_row_hash` như mọi nguồn khác.
 

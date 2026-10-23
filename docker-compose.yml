@@ -41,6 +41,8 @@ services:
       MOCK_SERVER_URL: http://mock_server:8001
       # Kho dùng chung — chỉ `make publish` đọc biến này.
       SHARED_DATABASE_URL: ${SHARED_DATABASE_URL:-}
+      LANDING_RELEASE_REPO: ${LANDING_RELEASE_REPO:-nmdbbb/DVG6}
+      LANDING_RELEASE_TAG: ${LANDING_RELEASE_TAG:-landing}
     volumes:
       - .:/app
     ports:
