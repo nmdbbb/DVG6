@@ -27,9 +27,15 @@ Chứng minh tái tạo được: `make reset` xóa sạch mọi schema rồi ch
 
 Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải (decision #23). Mỗi người dựng lại warehouse làm như sau:
 
-1. Tải đúng file có sha256 ghi trong [sources_landing.md](sources_landing.md) về `data/landing/vaers/<ngày>/` (ví dụ `data/landing/vaers/2026-10-15/2021VAERSData.zip`). Thư mục `data/` đã bị `.gitignore` chặn, file không bao giờ vào git.
+1. `make landing-fetch` — tải file từ GitHub Release của repo về `data/landing/`, tự kiểm sha256.
+   Đây là cách **mặc định**: nguồn gốc cập nhật định kỳ nên mỗi người tự vào tải sẽ ra file khác
+   nhau. Chỉ người tải tay lần đầu mới làm bước 3 bên dưới.
 2. `make landing-verify` — in `Landing: N file khớp checksum`. Lệch hoặc thiếu file thì exit 1 kèm sha256 đúng cần tải.
-3. Chỉ người **lần đầu** dùng một file mới (hoặc nguồn đã đổi dữ liệu): `make landing-register SOURCE=vaers` (đặt `BY="Tên"` nếu không muốn lấy `git config user.name`). Lệnh thêm một dòng vào `sources_landing.md`; file đổi nội dung thì thêm dòng mới, không sửa dòng cũ. Commit bảng đó cùng một dòng mới trong `decision_log.md`.
+3. Chỉ người **tải tay lần đầu** (hoặc khi nguồn đổi dữ liệu): đặt file vào
+   `data/landing/<nguồn>/<ngày>/`, chạy `make landing-register SOURCE=vaers` (đặt `BY="Tên"` nếu
+   không muốn lấy `git config user.name`) rồi `make landing-upload SOURCE=vaers` để đưa lên
+   Release cho cả nhóm. Commit `sources_landing.md` cùng một dòng mới trong `decision_log.md`.
+   File đổi nội dung thì thêm dòng mới, không sửa dòng cũ.
 
 `make ingest` luôn chạy `landing-verify` trước, nên file bị sửa dù một byte cũng không được nạp.
 

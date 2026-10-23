@@ -16,7 +16,7 @@ MODE_ENV := -e SOURCE_MODE=$(SOURCE_MODE)
 endif
 ETL_INGEST := $(COMPOSE) run --rm $(RUN_FLAGS) $(MODE_ENV) etl
 
-.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check landing-register landing-verify publish
+.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check landing-register landing-verify landing-fetch landing-upload publish
 
 help:
 	@echo make up         - khoi dong Postgres, cho healthy, build image Python
@@ -24,6 +24,8 @@ help:
 	@echo make ingest     - chay toan bo connector (SOURCE=source_demo, SOURCE_MODE=live/mock)
 	@echo make landing-register SOURCE=vaers - ghi sha256 file tai tay trong data/landing vao docs/sources_landing.md
 	@echo make landing-verify   - kiem lai sha256 moi file da dang ky, exit 1 neu lech
+	@echo make landing-fetch    - tai file nguon tai tay tu GitHub Release ve data/landing
+	@echo make landing-upload SOURCE=vaers - day file da dang ky len GitHub Release (can gh)
 	@echo make mock       - chay mock server tai http://localhost:8001
 	@echo make mock-check - ingest live roi mock, so khop so dong va _row_hash
 	@echo make transform  - dbt run: staging, core, analytics
@@ -65,6 +67,17 @@ endif
 
 landing-verify:
 	$(ETL) python -m scripts.landing verify $(if $(SOURCE),--only $(SOURCE))
+
+# Lay file nguon tai tay ve may minh. Repo public nen khong can dang nhap.
+landing-fetch:
+	$(ETL) python -m scripts.landing fetch $(if $(SOURCE),--only $(SOURCE))
+
+# Chi nguoi da tai tay chay. Muon token tu gh tren may host, khong luu vao image.
+landing-upload:
+ifeq ($(SOURCE),)
+	$(error Thieu SOURCE, vi du: make landing-upload SOURCE=vaers)
+endif
+	$(COMPOSE) run --rm $(RUN_FLAGS) -e GH_TOKEN=$(shell gh auth token) etl 		python -m scripts.landing upload --source $(SOURCE)
 
 mock:
 	$(COMPOSE) up -d --wait mock_server

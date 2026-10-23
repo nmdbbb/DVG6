@@ -85,3 +85,20 @@ def test_verify_only_skips_other_sources(env):
     assert landing.verify(doc, root, only="source_demo") == []
     assert landing.verify(doc, root, only="vaers_data") != []
     assert landing.verify(doc, root, only="vaers") != []
+
+
+# --- tên asset trên GitHub Release ------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "rel_path, asset",
+    [
+        ("data/landing/vaers/2026-10-23/2021VAERSData.zip", "vaers__2026-10-23__2021VAERSData.zip"),
+        ("data/landing/openfda/2026-01-02/labels.json", "openfda__2026-01-02__labels.json"),
+        ("data/landing/x/y.csv", "x__y.csv"),
+    ],
+)
+def test_asset_name_khu_hoi_duoc(rel_path, asset):
+    # Tên asset không chứa dấu "/" nên phải làm phẳng; fetch dựng lại đúng vị trí cũ từ tên đó.
+    assert landing.asset_name(rel_path) == asset
+    assert landing.path_of_asset(asset) == rel_path

@@ -13,6 +13,21 @@ Nhóm có **hai nơi chứa dữ liệu**, đừng nhầm lẫn giữa chúng.
 Kho chung là **bản sao chỉ-đọc** của warehouse local, không phải nơi tích lũy dữ liệu riêng. Mỗi
 lần publish thay toàn bộ ba schema. Quyết định: [decision_log](decision_log.md) #29–31.
 
+## Kho này **không** giải quyết việc chia sẻ file nguồn
+
+Kho chung chứa **kết quả đã làm sạch**. Nó không chứa `raw`, nên không giúp người viết model
+transform có dữ liệu để làm việc. Hai nhu cầu khác nhau, hai cơ chế khác nhau:
+
+| Nhu cầu | Cơ chế |
+|---|---|
+| Cả nhóm xem cùng một kết quả đã làm sạch | kho Postgres này |
+| Cả nhóm chạy được pipeline từ cùng một file nguồn | **GitHub Release** + `make landing-fetch` |
+
+Nguồn phải tải tay (VAERS có CAPTCHA) lại được dựng lại định kỳ ở phía CDC, nên mỗi người tự tải
+sẽ ra file khác nhau và `make landing-verify` sẽ chặn. Vì vậy một người tải, đẩy lên Release bằng
+`make landing-upload`, cả nhóm lấy đúng bản đó bằng `make landing-fetch`. Chi tiết:
+[runbook](runbook.md) mục "Nguồn tải tay".
+
 ## Kho hiện tại
 
 | | |
