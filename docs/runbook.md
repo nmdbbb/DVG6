@@ -92,6 +92,25 @@ cùng một số liệu (decision #29).
 phí 500 MB. `staging` là view, dựng lại được từ raw. Bảng `meta.ingestion_batch_row` cũng bị bỏ
 qua: vài triệu dòng, chỉ dùng cho `make mock-check` ở local.
 
+### Kho chung hiện tại
+
+| | |
+|---|---|
+| Nhà cung cấp | Neon, gói miễn phí (500 MB) |
+| Project | `DVG6`, branch `production` |
+| Region | `ap-southeast-1` (Singapore) |
+| PostgreSQL | 18 |
+| Database | `neondb` |
+| Tài khoản | đăng nhập bằng GitHub `nmdbbb` — Data Architect giữ |
+| Dung lượng đang dùng | 8,6 MB (2026-10-23, còn là dữ liệu giả `source_demo`) |
+
+Connection string nằm trong `.env` của người publish, **không bao giờ commit**. Role `analyst`
+và `api_reader` trên kho chung dùng mật khẩu trong `.env` của người đó; muốn chia cho người khác
+thì gửi riêng, không đưa vào repo hay issue.
+
+Theo dõi dung lượng ở Neon console. Khi nạp VAERS thật, nếu vượt 400 MB thì phải bàn lại phạm vi
+dữ liệu trước khi đụng trần 500 MB.
+
 ### Dựng kho chung lần đầu
 
 1. Tạo một project Postgres trên [Neon](https://neon.com) (gói miễn phí, 0,5 GB). Chọn region gần
