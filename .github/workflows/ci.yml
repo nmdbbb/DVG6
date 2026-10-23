@@ -78,11 +78,27 @@ jobs:
         run: make quality
       - name: make test
         run: make test
-      - name: Cổng quality phải chặn dữ liệu hỏng
+      - name: Duong publish len kho dung chung
         run: |
-          make demo-break
-          if make quality; then echo "::error::quality không chặn dữ liệu hỏng"; exit 1; fi
-
-      - name: Log khi lỗi
-        if: failure()
-        run: docker compose logs db
+          # Dung mot database thu hai trong cung cluster lam "kho chung" gia lap.
+          docker compose exec -T db psql -U qtdl -d qtdl -c 'create database qtdl_shared'
+          docker compose run --rm -T             -e SHARED_DATABASE_URL='postgresql://qtdl:change_me@db:5432/qtdl_shared'             etl python -m scripts.publish --allow-local-target
+          # raw va staging khong duoc co mat tren kho chung
+          leaked=$(docker compose exec -T db psql -U qtdl -d qtdl_shared -tAc             "select count(*) from pg_namespace where nspname in ('raw','staging')")
+          test "$leaked" -eq 0
+      - name: "Chot chan: chi publish duoc tro vao host la"
+        run: |
+          set -e
+          guard() {
+            if docker compose run --rm -T -e POSTGRES_HOST=ep-fake.neon.tech etl "$@"; then
+              echo "::error::khong chan duoc host la: $*"; exit 1
+            fi
+          }
+          guard python -m scripts.reset_db
+          guard python -m scripts.migrate
+          guard python -m quality.runner
+          guard python -m ingestion.cli run --source source_demo
+          # Chieu nguoc lai: publish khong duoc nham dich la Postgres local.
+          if docker compose run --rm -T             -e SHARED_DATABASE_URL='postgresql://qtdl:change_me@db:5432/qtdl_shared'             etl python -m scripts.publish; then
+            echo "::error::publish khong chan duoc dich local"; exit 1
+          fi
