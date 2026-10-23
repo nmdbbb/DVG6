@@ -78,6 +78,21 @@ jobs:
         run: make quality
       - name: make test
         run: make test
+      - name: Duong publish len kho dung chung
+        run: |
+          # Dung mot database thu hai trong cung cluster lam "kho chung" gia lap.
+          docker compose exec -T db psql -U qtdl -d qtdl -c 'create database qtdl_shared'
+          docker compose run --rm -T             -e SHARED_DATABASE_URL='postgresql://qtdl:change_me@db:5432/qtdl_shared'             etl python -m scripts.publish --allow-local-target
+          # raw va staging khong duoc co mat tren kho chung
+          leaked=$(docker compose exec -T db psql -U qtdl -d qtdl_shared -tAc             "select count(*) from pg_namespace where nspname in ('raw','staging')")
+          test "$leaked" -eq 0
+      - name: "Chot chan: chi publish duoc tro vao host la"
+        run: |
+          for m in scripts.reset_db scripts.migrate quality.runner; do
+            if docker compose run --rm -T -e POSTGRES_HOST=ep-fake.neon.tech etl python -m $m; then
+              echo "::error::$m khong chan duoc host la"; exit 1
+            fi
+          done
       - name: Cổng quality phải chặn dữ liệu hỏng
         run: |
           make demo-break

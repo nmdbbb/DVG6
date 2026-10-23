@@ -18,7 +18,7 @@ from pathlib import Path
 import typer
 from psycopg import sql
 
-from common.db import REPO_ROOT, connect
+from common.db import REPO_ROOT, assert_local, connect
 
 MIGRATIONS_DIR = REPO_ROOT / "db" / "migrations"
 ROLES_FILE = REPO_ROOT / "db" / "roles.sql"
@@ -67,6 +67,7 @@ def apply_roles(conn) -> None:
 
 @app.command()
 def main(status: bool = typer.Option(False, "--status", help="Chỉ in trạng thái, không áp dụng.")):
+    assert_local("migrate")
     with connect("admin", autocommit=True) as conn:
         conn.execute(BOOTSTRAP)
         applied = dict(conn.execute("select version, checksum from meta.schema_version").fetchall())

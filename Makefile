@@ -16,7 +16,7 @@ MODE_ENV := -e SOURCE_MODE=$(SOURCE_MODE)
 endif
 ETL_INGEST := $(COMPOSE) run --rm $(RUN_FLAGS) $(MODE_ENV) etl
 
-.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check landing-register landing-verify
+.PHONY: help up down build migrate ingest transform quality test lint dashboard all reset lineage demo-break psql logs mock mock-check landing-register landing-verify publish
 
 help:
 	@echo make up         - khoi dong Postgres, cho healthy, build image Python
@@ -34,6 +34,7 @@ help:
 	@echo make reset      - xoa sach warehouse roi dung lai tu so khong
 	@echo make lineage    - dbt docs tai http://localhost:8080
 	@echo make demo-break - co tinh lam hong du lieu de chung minh quality chan pipeline
+	@echo make publish    - day core+analytics+meta tu local len kho dung chung
 
 up:
 	$(COMPOSE) up -d --wait db mock_server
@@ -93,6 +94,10 @@ dashboard:
 	@echo Dashboard: http://localhost:5173  -  API docs: http://localhost:8000/docs
 
 all: up migrate ingest transform quality
+
+# Kho dung chung chi nhan du lieu qua day; moi lenh khac van chay tren warehouse local.
+publish:
+	$(ETL) python -m scripts.publish $(if $(DRY_RUN),--dry-run,)
 
 reset: up
 	$(ETL) python -m scripts.reset_db
