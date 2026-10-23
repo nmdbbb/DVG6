@@ -11,7 +11,7 @@ Nhóm có **hai nơi chứa dữ liệu**, đừng nhầm lẫn giữa chúng.
 | Hỏng thì sao | `make reset` dựng lại, không ảnh hưởng ai | publish lại từ một máy local |
 
 Kho chung là **bản sao chỉ-đọc** của warehouse local, không phải nơi tích lũy dữ liệu riêng. Mỗi
-lần publish thay toàn bộ ba schema. Quyết định: [decision_log](decision_log.md) #29–31.
+lần publish thay toàn bộ ba schema. Quyết định: [decision_log](decision_log.md) #35–37.
 
 ## Kho này **không** giải quyết việc chia sẻ file nguồn
 
@@ -180,4 +180,4 @@ Khi một mật khẩu lộ ra ngoài `.env` — gửi nhầm vào nhóm chat, d
 ---
 
 Liên quan: [runbook](runbook.md) · [data_contract](data_contract.md) §7 · [schema](schema.md) ·
-[decision_log](decision_log.md) #29–31
+[decision_log](decision_log.md) #35–39

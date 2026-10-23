@@ -54,7 +54,7 @@ Dữ liệu cố tình bẩn để mọi nhánh của transform và quality đ�
 
 | Thuộc tính | Giá trị |
 |---|---|
-| `source_name` | `vaers` |
+| `source_name` | `vaers_data`, `vaers_symptoms`, `vaers_vax` (mỗi CSV một connector) |
 | Connector | `ingestion/sources/vaers.py` (Source & Crawler A) |
 | Bảng raw | `raw.vaers_data`, `raw.vaers_symptoms`, `raw.vaers_vax` (migration `006`) |
 | URL | https://vaers.hhs.gov/data/datasets.html |
@@ -62,7 +62,7 @@ Dữ liệu cố tình bẩn để mọi nhánh của transform và quality đ�
 | Tần suất cập nhật | Hàng tuần; dữ liệu đã khử định danh xuất hiện sau 4–6 tuần |
 | Cách lấy (live) | **Tải tay một lần** — xem mục "Tại sao không crawl được" bên dưới |
 | Đường mock | `mock_format = "html"` — mock_server phát lại snapshot đã lưu |
-| Khóa định danh bản ghi | md5 của cả dòng CSV gốc (giữ nguyên trạng, kể cả khoảng trắng) |
+| Khóa định danh bản ghi | md5 của toàn bộ bản ghi dạng JSON sắp khóa, giữ nguyên giá trị chuỗi và khoảng trắng; không phải hash bytes CSV |
 | Phạm vi | Báo cáo nhận trong 2021, `VAX_TYPE = 'COVID19'` |
 | Rủi ro đã biết | Báo cáo thụ động: trùng lặp ~29%, thiếu giá trị, sai chính tả, không có mẫu số |
 
@@ -76,9 +76,20 @@ Quy trình nhóm dùng:
    không phải vào trang CDC. Các bước dưới chỉ dành cho người tải tay lần đầu.
 1. **Một người tải tay một lần**, chọn file năm cần, nhập mã xác thực.
 2. Đặt file ZIP vào `data/landing/vaers/<ngày>/2021VAERSData.zip` (thư mục `data/` không commit).
-3. Chạy `make landing-register SOURCE=vaers` để ghi tên file, kích thước, **sha256** và ngày tải vào `docs/sources_landing.md`.
-4. `make landing-upload SOURCE=vaers` đẩy file lên GitHub Release để cả nhóm dùng chung.
-5. `make ingest SOURCE=vaers` đọc ZIP từ landing, kiểm sha256 khớp với bản đã đăng ký, rồi mới parse.
+3. `make landing-register SOURCE=vaers` ghi tên file, kích thước, **sha256** và ngày tải vào
+   [sources_landing.md](sources_landing.md) — đây là sổ đăng ký của cả nhóm.
+4. `make landing-upload SOURCE=vaers` đẩy file lên GitHub Release để 6 người còn lại chỉ cần
+   `make landing-fetch`, không ai phải đụng CAPTCHA của CDC nữa.
+5. `python -m ingestion.inspect_vaers <đường-dẫn-ZIP>` ghi đường dẫn, checksum và encoding vào
+   `ingestion/sources/vaers_landing.json` — manifest mà ba connector đọc.
+6. Chạy riêng từng connector: `make ingest SOURCE=vaers_data`, `SOURCE=vaers_symptoms`,
+   `SOURCE=vaers_vax`. Mỗi connector tự kiểm sha256 trước khi đọc CSV. Cách chạy không cần make
+   và cách xem trước dữ liệu: [vaers_ingestion.md](vaers_ingestion.md).
+
+> **Đang có hai sổ đăng ký cho cùng một file:** `sources_landing.md` (bước 3, cho cả nhóm) và
+> `vaers_landing.json` (bước 5, cho connector). Hai chỗ ghi cùng một sha256 nên có thể lệch nhau.
+> Cần gộp làm một — xem issue về việc này.
+
 
 Bản ZIP là **bản gốc bất biến** của nguồn: connector lưu từng khối CSV thành trang trong `data/raw/vaers/<ngày>/<batch_id>/`, nên mock_server phát lại được và `make mock-check` vẫn khớp `_row_hash` như mọi nguồn khác.
 

@@ -5,7 +5,7 @@ Mỗi tầng kết nối bằng đúng role của nó (db/roles.sql):
 - etl_writer : ingestion, transform, quality
 - api_reader : API (xem api/deps.py)
 
-Mọi lệnh ở đây chạy trên warehouse **local**. Kho dùng chung (decision #29) chỉ nhận dữ liệu
+Mọi lệnh ở đây chạy trên warehouse **local**. Kho dùng chung (decision #35) chỉ nhận dữ liệu
 qua `scripts/publish.py`; không lệnh nào khác được trỏ vào đó.
 """
 

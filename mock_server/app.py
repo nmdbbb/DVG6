@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 import math
 import os
 import random
@@ -125,12 +126,15 @@ def _headers(snap: seed.Snapshot, link: str) -> dict:
 
 @app.get("/health")
 def health():
-    # Luôn 200 khi server chạy; tình trạng snapshot chỉ để xem, không làm container unhealthy.
+    # Không parse snapshot ở healthcheck: VAERS có hàng triệu bản ghi.
+    # Chỉ đọc metadata; kiểm checksum/parse vẫn do seed.load làm khi phát lại.
     snapshots = {}
     for s in seed.sources():
         try:
-            snap = seed.load(s)
-            snapshots[s] = snap.batch_id if snap else None
+            manifest = seed.latest_manifest(s)
+            snapshots[s] = (
+                json.loads(manifest.read_text(encoding="utf-8"))["batch_id"] if manifest else None
+            )
         except Exception as exc:  # noqa: BLE001
             snapshots[s] = f"error: {exc}"
     return {"status": "ok", "snapshots": snapshots}

@@ -99,7 +99,7 @@ Ràng buộc "không được NULL" phải có test `not_null` trong `schema.yml
 ## 7. Kho dùng chung
 
 Warehouse local là bản làm việc đầy đủ 5 schema. Kho dùng chung (Neon) là **bản sao chỉ-đọc** của
-`core`, `analytics`, `meta`, cập nhật bằng `make publish` (decision #29, #30).
+`core`, `analytics`, `meta`, cập nhật bằng `make publish` (decision #35, #36).
 
 - Chỉ Data Architect publish, và chỉ sau khi `make quality` xanh.
 - Không ai được `INSERT`/`UPDATE` trực tiếp trên kho chung: mỗi lần publish thay toàn bộ ba schema.

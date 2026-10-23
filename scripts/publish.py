@@ -1,6 +1,6 @@
 """Đẩy `core`, `analytics`, `meta` từ warehouse local lên kho Postgres dùng chung.
 
-Vì sao chỉ ba schema này (decision #29): `raw` chứa `SYMPTOM_TEXT` và cột `_payload` nên nặng
+Vì sao chỉ ba schema này (decision #35): `raw` chứa `SYMPTOM_TEXT` và cột `_payload` nên nặng
 hơn 1 GB, vượt gói miễn phí 500 MB của Neon/Supabase. `staging` chỉ là view dựng lại được từ raw.
 Dashboard vốn chỉ đọc `analytics` + `meta` (role `api_reader`), còn notebook đọc thêm `core`.
 
