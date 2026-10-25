@@ -27,3 +27,177 @@ models:
         data_tests:
           - unique
           - not_null
+  
+  - name: stg_vaers__data
+    description: >
+      Dữ liệu báo cáo phản ứng sau tiêm (VAERSDATA) từ các batch hợp lệ, đã chuẩn hóa tên cột và ép kiểu ngày/số.
+      Mỗi dòng tương ứng với một bản ghi gốc từ nguồn (xác định qua row_hash).
+    columns:
+      - name: vaers_id
+        description: Mã định danh báo cáo VAERS.
+        data_tests:
+          - not_null
+      - name: recvdate
+        description: Ngày hệ thống tiếp nhận báo cáo.
+      - name: state
+        description: Mã bang hoặc vùng lãnh thổ tại Mỹ (2 ký tự in hoa).
+      - name: age_yrs
+        description: Tuổi bệnh nhân tính theo năm.
+      - name: cage_yr
+        description: Tuổi theo năm do hệ thống nguồn tính toán từ ngày sinh và ngày tiêm.
+      - name: cage_mo
+        description: Phần tuổi lẻ theo tháng do hệ thống nguồn tính toán.
+      - name: sex
+        description: Giới tính bệnh nhân (M, F, hoặc U).
+      - name: rpt_date
+        description: Ngày lập báo cáo trên biểu mẫu cũ.
+      - name: symptom_text
+        description: Mô tả chi tiết triệu chứng dưới dạng văn bản tự do.
+      - name: died
+        description: Đánh dấu ca tử vong (Y hoặc NULL).
+      - name: datedied
+        description: Ngày tử vong.
+      - name: l_threat
+        description: Đánh dấu tình trạng đe dọa tính mạng (Y hoặc NULL).
+      - name: er_visit
+        description: Đánh dấu ca phải vào khoa cấp cứu trên biểu mẫu cũ (Y hoặc NULL).
+      - name: hospital
+        description: Đánh dấu ca phải nhập viện điều trị (Y hoặc NULL).
+      - name: hospdays
+        description: Số ngày điều trị nội trú.
+      - name: x_stay
+        description: Đánh dấu ca phải kéo dài thời gian nằm viện.
+      - name: disable
+        description: Đánh dấu ca để lại di chứng hoặc khuyết tật (Y hoặc NULL).
+      - name: recovd
+        description: Trạng thái hồi phục của bệnh nhân (Y, N, hoặc U).
+      - name: vax_date
+        description: Ngày tiêm vắc xin.
+      - name: onset_date
+        description: Ngày bắt đầu xuất hiện triệu chứng.
+      - name: numdays
+        description: Khoảng cách (số ngày) từ lúc tiêm đến khi khởi phát triệu chứng.
+      - name: lab_data
+        description: Kết quả xét nghiệm lâm sàng đi kèm.
+      - name: v_adminby
+        description: Phân loại cơ sở y tế thực hiện tiêm chủng.
+      - name: v_fundby
+        description: Nguồn tài trợ/chi trả vắc xin.
+      - name: other_meds
+        description: Các loại thuốc khác bệnh nhân đang sử dụng cùng thời điểm.
+      - name: cur_ill
+        description: Bệnh lý cấp tính tại thời điểm tiêm.
+      - name: history
+        description: Tiền sử bệnh lý mãn tính hoặc bệnh nền.
+      - name: prior_vax
+        description: Thông tin phản ứng ở các lần tiêm chủng trước đây.
+      - name: splttype
+        description: Mã phân loại báo cáo từ nhà sản xuất.
+      - name: form_vers
+        description: Phiên bản biểu mẫu thu thập của VAERS (1 hoặc 2).
+      - name: todays_date
+        description: Ngày điền biểu mẫu (áp dụng cho VAERS 2.0).
+      - name: birth_defect
+        description: Đánh dấu trường hợp dị tật bẩm sinh.
+      - name: ofc_visit
+        description: Đánh dấu trường hợp có thăm khám tại phòng khám.
+      - name: er_ed_visit
+        description: Đánh dấu ca cấp cứu trên biểu mẫu VAERS 2.0.
+      - name: allergies
+        description: Tiền sử dị ứng với thuốc, thực phẩm hoặc các tác nhân khác.
+      - name: vax_order
+        description: Thứ tự bản ghi từ cột ORDER của file gốc.
+      - name: batch_id
+        description: Mã batch nạp dữ liệu (tham chiếu bảng meta.ingestion_batch).
+      - name: ingested_at
+        description: Thời điểm bản ghi được nạp vào schema raw.
+      - name: row_hash
+        description: Mã băm MD5 đại diện cho dòng dữ liệu gốc.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_vaers__vax
+    description: >
+      Thông tin chi tiết về các mũi tiêm trong từng báo cáo VAERS (từ bảng VAERSVAX).
+      Mỗi dòng ứng với một bản ghi vắc xin gốc.
+    columns:
+      - name: vaers_id
+        description: Mã định danh báo cáo VAERS.
+        data_tests:
+          - not_null
+      - name: vax_type
+        description: Mã phân loại vắc xin (ví dụ COVID19, FLU3).
+      - name: vax_manu
+        description: Tên nhà sản xuất vắc xin.
+      - name: vax_lot
+        description: Số lô sản xuất của vắc xin.
+      - name: vax_dose_series
+        description: Thứ tự mũi tiêm trong phác đồ.
+      - name: vax_route
+        description: Đường đưa vắc xin vào cơ thể (tiêm bắp, tiêm dưới da, uống...).
+      - name: vax_site
+        description: Vị trí tiêm trên cơ thể (tay trái, tay phải, đùi...).
+      - name: vax_name
+        description: Tên thương mại hoặc tên đầy đủ của vắc xin.
+      - name: vax_order
+        description: Thứ tự bản ghi từ cột ORDER của file gốc.
+      - name: batch_id
+        description: Mã batch nạp dữ liệu.
+      - name: ingested_at
+        description: Thời điểm nạp vào tầng raw.
+      - name: row_hash
+        description: Mã băm MD5 của dòng dữ liệu gốc.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_vaers__symptoms
+    description: >
+      Danh sách triệu chứng đã được làm phẳng từ 5 cột SYMPTOM1..SYMPTOM5 của bảng VAERSSYMPTOMS.
+      Mỗi dòng ứng với một cặp (raw_row_hash, symptom_slot) có dữ liệu.
+    columns:
+      - name: symptom_row_id
+        description: Khóa chính tự sinh sau khi unpivot (tạo từ MD5 của raw_row_hash và symptom_slot).
+        data_tests:
+          - unique
+          - not_null
+      - name: vaers_id
+        description: Mã định danh báo cáo VAERS.
+        data_tests:
+          - not_null
+      - name: symptom_slot
+        description: Thứ tự cột triệu chứng trong bảng gốc (từ 1 đến 5).
+      - name: symptom_name
+        description: Tên triệu chứng chuẩn hóa theo từ điển y khoa MedDRA.
+        data_tests:
+          - not_null
+      - name: symptom_version
+        description: Phiên bản từ điển MedDRA được áp dụng.
+      - name: symptom_order
+        description: Giá trị cột ORDER từ bảng gốc.
+      - name: batch_id
+        description: Mã batch nạp dữ liệu.
+      - name: ingested_at
+        description: Thời điểm nạp vào tầng raw.
+      - name: raw_row_hash
+        description: Mã băm MD5 của dòng dữ liệu gốc trước khi tách cột.
+
+  - name: stg_openfda__substances
+    description: >
+      Danh mục hoạt chất chuẩn hóa trích xuất từ nhãn thuốc openFDA, đã tách mảng JSON và loại bỏ trùng lặp.
+      Mỗi dòng là một tên hoạt chất duy nhất.
+    columns:
+      - name: substance_name
+        description: Tên hoạt chất đã chuẩn hóa chữ in hoa.
+        data_tests:
+          - unique
+          - not_null
+      - name: spl_id
+        description: Mã SPL (Structured Product Labeling) đại diện của nhãn thuốc chứa hoạt chất.
+      - name: batch_id
+        description: Mã batch nạp dữ liệu.
+      - name: ingested_at
+        description: Thời điểm nạp vào tầng raw.
+      - name: row_hash
+        description: Mã băm MD5 của bản ghi nhãn thuốc gốc.   
