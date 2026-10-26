@@ -187,3 +187,40 @@ models:
         description: Tháng (1..12).
       - name: day_of_month
         description: Ngày trong tháng (1..31).
+  
+  - name: dim_allergen
+    description: >
+      Danh mục chất gây dị ứng đã chuẩn hóa từ văn bản tự do ALLERGIES bằng từ điển hoạt chất openFDA
+      (so khớp chính xác + khớp mờ trigram similarity >= 0.45), cộng UNMAPPED và dòng UNKNOWN (-1).
+      Grain: một dòng cho mỗi canonical_name.
+    columns:
+      - name: allergen_key
+        description: Khóa thay thế của chất gây dị ứng (-1 cho UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: canonical_name
+        description: Tên chất gây dị ứng chuẩn hóa (khóa tự nhiên), gồm cả UNMAPPED và UNKNOWN.
+        data_tests:
+          - unique
+          - not_null
+      - name: allergen_label
+        description: Nhãn hiển thị chất gây dị ứng.
+        data_tests:
+          - not_null
+      - name: exact_mention_count
+        description: Tổng số lượt đề cập khớp chính xác (exact) với từ điển openFDA.
+        data_tests:
+          - not_null
+      - name: fuzzy_mention_count
+        description: Tổng số lượt đề cập khớp mờ (fuzzy) với từ điển openFDA.
+        data_tests:
+          - not_null
+      - name: unmapped_mention_count
+        description: Tổng số lượt đề cập không khớp từ điển (chỉ khác 0 tại dòng UNMAPPED).
+        data_tests:
+          - not_null
+      - name: total_mention_count
+        description: Tổng số lượt đề cập của chất gây dị ứng trong các báo cáo.
+        data_tests:
+          - not_null
