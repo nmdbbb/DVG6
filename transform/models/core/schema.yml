@@ -53,3 +53,137 @@ models:
         description: Độ đo; NULL khi nguồn để rỗng (không impute, cleaning_log #7).
       - name: batch_id
         description: Lô nạp sinh ra dòng, để truy vết về meta.ingestion_batch.
+  
+  - name: dim_vaccine
+    description: >
+      Danh mục sản phẩm vắc xin. Gom tên nhà sản xuất về 3 hãng chuẩn (PFIZER-BIONTECH, MODERNA, JANSSEN) và OTHER.
+      Grain: một dòng cho mỗi bộ (vax_type, vax_manu chuẩn hóa, vax_name), cộng dòng UNKNOWN (vaccine_key = -1).
+    columns:
+      - name: vaccine_key
+        description: Khóa thay thế của sản phẩm vắc xin (-1 cho UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: vaccine_id
+        description: Khóa tự nhiên ghép từ vax_type, vax_manu chuẩn hóa và vax_name.
+        data_tests:
+          - unique
+          - not_null
+      - name: vax_type
+        description: Mã loại vắc xin (ví dụ COVID19).
+        data_tests:
+          - not_null
+      - name: vax_manu
+        description: Nhà sản xuất đã chuẩn hóa (PFIZER-BIONTECH, MODERNA, JANSSEN, OTHER, UNKNOWN).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PFIZER-BIONTECH', 'MODERNA', 'JANSSEN', 'OTHER', 'UNKNOWN']
+      - name: vax_name
+        description: Tên sản phẩm vắc xin.
+        data_tests:
+          - not_null
+
+  - name: dim_symptom
+    description: >
+      Danh mục triệu chứng MedDRA Preferred Term đã chuẩn hóa (đổi vaccination site thành injection site).
+      Grain: một dòng cho mỗi symptom_name chuẩn hóa, cộng dòng UNKNOWN (symptom_key = -1).
+    columns:
+      - name: symptom_key
+        description: Khóa thay thế của triệu chứng (-1 cho UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: symptom_name
+        description: Thuật ngữ triệu chứng MedDRA đã chuẩn hóa.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_age_group
+    description: >
+      Danh mục 7 nhóm tuổi cố định theo bài báo Flora et al. (2022) cộng dòng UNKNOWN (-1).
+      Grain: một dòng cho mỗi nhóm tuổi.
+    columns:
+      - name: age_group_key
+        description: Khóa thay thế của nhóm tuổi (1..7, -1 cho UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: age_group_label
+        description: Nhãn nhóm tuổi (5-11, 12-15, 16-18, 19-30, 31-50, 51-65, 66+, UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: min_age
+        description: Tuổi nhỏ nhất của nhóm (NULL cho UNKNOWN).
+      - name: max_age
+        description: Tuổi lớn nhất của nhóm (NULL cho UNKNOWN).
+      - name: sort_order
+        description: Thứ tự sắp xếp hiển thị.
+        data_tests:
+          - not_null
+
+  - name: dim_sex
+    description: >
+      Danh mục giới tính (M, F, U).
+      Grain: một dòng cho mỗi mã giới tính (U ứng với khóa -1 UNKNOWN).
+    columns:
+      - name: sex_key
+        description: Khóa thay thế giới tính (1 = F, 2 = M, -1 = U/UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: sex_code
+        description: Mã giới tính tự nhiên (F, M, U).
+        data_tests:
+          - unique
+          - not_null
+      - name: sex_label
+        description: Nhãn hiển thị giới tính (Female, Male, UNKNOWN).
+        data_tests:
+          - not_null
+
+  - name: dim_state
+    description: >
+      Danh mục bang/lãnh thổ Mỹ (mã 2 chữ cái) cộng dòng UNKNOWN (-1).
+      Grain: một dòng cho mỗi mã bang state_code.
+    columns:
+      - name: state_key
+        description: Khóa thay thế của bang (-1 cho UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: state_code
+        description: Mã bang 2 chữ cái viết hoa (hoặc UNKNOWN cho khóa -1).
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_date
+    description: >
+      Danh mục ngày dương lịch cố định từ 2020-01-01 đến 2025-12-31 cộng dòng UNKNOWN (-1).
+      Grain: một dòng cho mỗi ngày.
+    columns:
+      - name: date_key
+        description: Khóa thay thế dạng YYYYMMDD (-1 cho UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: date_day
+        description: Giá trị kiểu date (1900-01-01 làm giá trị đại diện cho dòng UNKNOWN -1).
+        data_tests:
+          - unique
+          - not_null
+      - name: date_label
+        description: Chuỗi hiển thị YYYY-MM-DD (hoặc UNKNOWN).
+        data_tests:
+          - unique
+          - not_null
+      - name: year
+        description: Năm dương lịch.
+      - name: month
+        description: Tháng (1..12).
+      - name: day_of_month
+        description: Ngày trong tháng (1..31).
