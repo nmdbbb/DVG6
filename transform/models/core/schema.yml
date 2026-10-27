@@ -224,3 +224,212 @@ models:
         description: Tổng số lượt đề cập của chất gây dị ứng trong các báo cáo.
         data_tests:
           - not_null
+
+  - name: fct_report_raw
+    description: >
+      Báo cáo phản ứng sau tiêm vắc xin COVID-19 trong nước Mỹ năm 2021 (có ít nhất 1 triệu chứng),
+      đã làm sạch ngày/tuổi nhưng chưa khử trùng lặp (phục vụ câu hỏi Q5).
+      Grain: một dòng cho mỗi báo cáo (vaers_id duy nhất).
+    columns:
+      - name: report_key
+        description: Khóa định danh báo cáo dạng số nguyên (ép kiểu từ vaers_id).
+        data_tests:
+          - unique
+          - not_null
+      - name: vaers_id
+        description: Mã báo cáo VAERS.
+        data_tests:
+          - unique
+          - not_null
+      - name: received_date_key
+        description: Khóa ngoại trỏ tới dim_date cho ngày nhận báo cáo (-1 nếu thiếu/ngoài miền).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: vax_date_key
+        description: Khóa ngoại trỏ tới dim_date cho ngày tiêm đã làm sạch (-1 nếu thiếu/vô lý).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: age_group_key
+        description: Khóa ngoại trỏ tới dim_age_group (-1 nếu thiếu tuổi hoặc < 5 tuổi).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_age_group')
+                field: age_group_key
+      - name: sex_key
+        description: Khóa ngoại trỏ tới dim_sex (-1 cho U/UNKNOWN).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sex')
+                field: sex_key
+      - name: state_key
+        description: Khóa ngoại trỏ tới dim_state (-1 cho UNKNOWN).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_state')
+                field: state_key
+      - name: recvdate
+        description: Ngày nhận báo cáo (date).
+      - name: vax_date
+        description: Ngày tiêm đã làm sạch (NULL nếu trước 2020-12-01 hoặc sau recvdate).
+      - name: onset_date
+        description: Ngày khởi phát đã làm sạch (NULL nếu trước vax_date).
+      - name: age_yrs
+        description: Tuổi người tiêm theo năm (NULL nếu thiếu hoặc ngoài [0, 120]).
+      - name: numdays
+        description: Số ngày từ tiêm tới khởi phát, tính lại từ onset_date - vax_date.
+      - name: hospdays
+        description: Số ngày nằm viện đã làm sạch.
+      - name: n_symptoms
+        description: Số lượng triệu chứng chuẩn hóa khác nhau của báo cáo.
+        data_tests:
+          - not_null
+      - name: died
+        description: Cờ báo cáo tử vong (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: hospital
+        description: Cờ báo cáo nhập viện (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: er_visit
+        description: Cờ khám cấp cứu (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: life_threatening
+        description: Cờ đe dọa tính mạng (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: disabled
+        description: Cờ khuyết tật (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: batch_id
+        description: Lô nạp sinh ra bản ghi báo cáo.
+
+  - name: report_duplicate_map
+    description: >
+      Bảng ánh xạ truy vết các báo cáo bị loại do trùng lặp theo quy tắc tất định rule_version = 1
+      về báo cáo được giữ lại (kept_vaers_id có VAERS_ID nhỏ nhất).
+      Grain: một dòng cho mỗi vaers_id bị đánh dấu trùng.
+    columns:
+      - name: vaers_id
+        description: Mã báo cáo bị loại do trùng lặp.
+        data_tests:
+          - unique
+          - not_null
+      - name: kept_vaers_id
+        description: Mã báo cáo đại diện được giữ lại trong fct_report.
+        data_tests:
+          - not_null
+      - name: rule_version
+        description: Phiên bản quy tắc khử trùng lặp (1).
+        data_tests:
+          - not_null
+
+  - name: fct_report
+    description: >
+      Bảng sự kiện trung tâm chứa các báo cáo phản ứng sau tiêm COVID-19 năm 2021 đã khử trùng lặp.
+      Grain: một dòng cho mỗi báo cáo duy nhất sau khử trùng lặp (vaers_id).
+    columns:
+      - name: report_key
+        description: Khóa định danh báo cáo dạng số nguyên.
+        data_tests:
+          - unique
+          - not_null
+      - name: vaers_id
+        description: Mã báo cáo VAERS.
+        data_tests:
+          - unique
+          - not_null
+      - name: received_date_key
+        description: Khóa ngoại trỏ tới dim_date cho ngày nhận báo cáo.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: vax_date_key
+        description: Khóa ngoại trỏ tới dim_date cho ngày tiêm.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: age_group_key
+        description: Khóa ngoại trỏ tới dim_age_group.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_age_group')
+                field: age_group_key
+      - name: sex_key
+        description: Khóa ngoại trỏ tới dim_sex.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sex')
+                field: sex_key
+      - name: state_key
+        description: Khóa ngoại trỏ tới dim_state.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_state')
+                field: state_key
+      - name: recvdate
+        description: Ngày nhận báo cáo (date).
+      - name: vax_date
+        description: Ngày tiêm đã làm sạch.
+      - name: onset_date
+        description: Ngày khởi phát đã làm sạch.
+      - name: age_yrs
+        description: Tuổi người tiêm theo năm.
+      - name: numdays
+        description: Số ngày từ tiêm tới khởi phát (onset_date - vax_date).
+      - name: hospdays
+        description: Số ngày nằm viện.
+      - name: n_symptoms
+        description: Số triệu chứng chuẩn hóa khác nhau của báo cáo.
+        data_tests:
+          - not_null
+      - name: died
+        description: Cờ tử vong (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: hospital
+        description: Cờ nhập viện (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: er_visit
+        description: Cờ khám cấp cứu (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: life_threatening
+        description: Cờ đe dọa tính mạng (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: disabled
+        description: Cờ khuyết tật (boolean, không NULL).
+        data_tests:
+          - not_null
+      - name: batch_id
+        description: Lô nạp sinh ra dòng.

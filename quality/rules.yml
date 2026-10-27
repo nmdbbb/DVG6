@@ -114,3 +114,16 @@
     )
     select abs((select n from raw_counts) - (select count(*) from staging.stg_vaers__symptoms))
   expect: {operator: "==", value: 0}
+
+- name: fct_report_dedup_reconciliation
+  description: >
+    Tổng số báo cáo sau khử trùng lặp (fct_report) cộng số báo cáo bị đánh dấu trùng (report_duplicate_map)
+    phải bằng đúng tổng số báo cáo trước khử trùng lặp (fct_report_raw).
+  severity: error
+  sql: |
+    select abs(
+      (select count(*) from core.fct_report)
+      + (select count(*) from core.report_duplicate_map)
+      - (select count(*) from core.fct_report_raw)
+    )
+  expect: {operator: "==", value: 0}
