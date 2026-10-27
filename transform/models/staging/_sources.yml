@@ -7,6 +7,14 @@ sources:
     tables:
       - name: source_demo_records
         description: Nguồn giả source_demo (xem docs/sources.md).
+      - name: vaers_data
+        description: CSV VAERSDATA nguyên trạng (xem migration 006).
+      - name: vaers_vax
+        description: CSV VAERSVAX nguyên trạng (xem migration 006).
+      - name: vaers_symptoms
+        description: CSV VAERSSYMPTOMS nguyên trạng, dạng rộng 5 cột triệu chứng (xem migration 006).
+      - name: openfda_substances
+        description: Từ điển hoạt chất trích từ nhãn thuốc openFDA (xem migration 007).
 
   - name: meta
     schema: meta

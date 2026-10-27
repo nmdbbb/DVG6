@@ -93,3 +93,37 @@
     select extract(epoch from now() - max(finished_at)) / 86400
     from meta.ingestion_batch where status = 'success'
   expect: {operator: "<=", value: 7}
+
+- name: vaers_symptoms_unpivot_reconciliation
+  description: >
+    Tổng số dòng trong staging.stg_vaers__symptoms sau unpivot phải khớp tuyệt đối với tổng số ô
+    SYMPTOM1..SYMPTOM5 khác rỗng trong raw.vaers_symptoms (thuộc lô success).
+  severity: error
+  sql: |
+    with raw_counts as (
+      select coalesce(sum(
+        (case when nullif(trim(r."SYMPTOM1"), '') is not null then 1 else 0 end) +
+        (case when nullif(trim(r."SYMPTOM2"), '') is not null then 1 else 0 end) +
+        (case when nullif(trim(r."SYMPTOM3"), '') is not null then 1 else 0 end) +
+        (case when nullif(trim(r."SYMPTOM4"), '') is not null then 1 else 0 end) +
+        (case when nullif(trim(r."SYMPTOM5"), '') is not null then 1 else 0 end)
+      ), 0) as n
+      from raw.vaers_symptoms r
+      join meta.ingestion_batch b on b.batch_id = r._batch_id
+      where b.status = 'success'
+    )
+    select abs((select n from raw_counts) - (select count(*) from staging.stg_vaers__symptoms))
+  expect: {operator: "==", value: 0}
+
+- name: fct_report_dedup_reconciliation
+  description: >
+    Tổng số báo cáo sau khử trùng lặp (fct_report) cộng số báo cáo bị đánh dấu trùng (report_duplicate_map)
+    phải bằng đúng tổng số báo cáo trước khử trùng lặp (fct_report_raw).
+  severity: error
+  sql: |
+    select abs(
+      (select count(*) from core.fct_report)
+      + (select count(*) from core.report_duplicate_map)
+      - (select count(*) from core.fct_report_raw)
+    )
+  expect: {operator: "==", value: 0}
