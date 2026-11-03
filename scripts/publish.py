@@ -9,6 +9,10 @@ Dashboard vốn chỉ đọc `analytics` + `meta` (role `api_reader`), còn note
 
 Kho chung là **bản sao chỉ-đọc** của warehouse local: mỗi lần publish thay toàn bộ ba schema.
 Không ai sửa trực tiếp trên đó; muốn đổi số liệu thì chạy lại pipeline local rồi publish lại.
+
+Cổng chất lượng (decision #40): chỉ publish khi lần `make quality` gần nhất không có check
+`severity = error` nào fail, và lần chạy đó mới hơn lô nạp gần nhất. Trước đây đây chỉ là quy ước
+trong runbook; giờ lệnh tự từ chối.
 """
 
 from __future__ import annotations
@@ -59,6 +63,51 @@ def _target_host(url: str) -> str:
         return psycopg.conninfo.conninfo_to_dict(url).get("host", "") or ""
     except psycopg.ProgrammingError as exc:
         raise SystemExit(f"SHARED_DATABASE_URL không hợp lệ: {exc}") from None
+
+
+def quality_gate(dsn: str) -> tuple[bool, str]:
+    """(được publish?, lý do). Đọc meta của warehouse local.
+
+    Từ chối khi: chưa từng chạy quality; lần chạy gần nhất có check error fail; hoặc đã nạp lô mới
+    sau lần chạy quality đó (số liệu sắp publish chưa được kiểm).
+    """
+    with psycopg.connect(dsn) as conn:
+        row = conn.execute(
+            """
+            with last_run as (
+                select run_id, max(ran_at) as ran_at
+                from meta.quality_run
+                group by run_id
+                order by max(ran_at) desc
+                limit 1
+            )
+            select
+                l.run_id::text,
+                l.ran_at,
+                (select count(*) from meta.quality_run q
+                  where q.run_id = l.run_id and q.severity = 'error' and not q.passed),
+                (select count(*) from meta.quality_run q where q.run_id = l.run_id),
+                (select max(finished_at) from meta.ingestion_batch where status = 'success')
+            from last_run l
+            """
+        ).fetchone()
+    if row is None:
+        return False, "chưa có lần chạy quality nào — chạy `make quality` trước."
+    run_id, ran_at, n_error, n_checks, last_batch = row
+    if n_error:
+        return False, (
+            f"lần chạy quality gần nhất ({run_id[:8]}, {ran_at:%Y-%m-%d %H:%M}) có {n_error} check "
+            "error fail. Sửa dữ liệu/model rồi chạy lại `make quality`."
+        )
+    if last_batch is not None and last_batch > ran_at:
+        return False, (
+            f"có lô nạp mới ({last_batch:%Y-%m-%d %H:%M}) sau lần chạy quality gần nhất "
+            f"({ran_at:%Y-%m-%d %H:%M}). Chạy `make transform && make quality` trước."
+        )
+    return (
+        True,
+        f"quality {run_id[:8]} lúc {ran_at:%Y-%m-%d %H:%M}: {n_checks} check, 0 error fail.",
+    )
 
 
 def _server_version(dsn: str) -> int:
@@ -138,6 +187,11 @@ def main(
         "--allow-local-target",
         help="Cho phép đích là Postgres local. Chỉ dùng để tự kiểm thử đường publish.",
     ),
+    skip_quality_gate: bool = typer.Option(
+        False,
+        "--skip-quality-gate",
+        help="Bỏ qua cổng chất lượng. Chỉ dùng khi sự cố, và phải ghi decision_log.",
+    ),
 ) -> None:
     assert_local("publish (nguồn phải là warehouse local)")
     target = _target_url()
@@ -155,6 +209,17 @@ def main(
     typer.echo(f"Nguồn : warehouse local ({os.environ.get('POSTGRES_HOST', 'localhost')})")
     typer.echo(f"Đích  : {host}")
     typer.echo(f"Schema: {', '.join(SCHEMAS)}  (bỏ qua {', '.join(EXCLUDE_TABLES)})")
+
+    ok, reason = quality_gate(source)
+    if ok:
+        typer.secho(f"Cổng   : ĐẠT — {reason}", fg="green")
+    elif skip_quality_gate:
+        typer.secho(f"Cổng   : BỎ QUA (--skip-quality-gate) — {reason}", fg="yellow")
+    elif dry_run:
+        typer.secho(f"Cổng   : SẼ CHẶN — {reason}", fg="red")
+    else:
+        typer.secho(f"TỪ CHỐI publish: {reason}", fg="red", err=True)
+        sys.exit(1)
 
     before = _counts(source)
     typer.echo(f"Local có {len(before)} bảng, {sum(before.values()):,} dòng.")
