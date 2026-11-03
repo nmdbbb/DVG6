@@ -101,7 +101,7 @@ Ràng buộc "không được NULL" phải có test `not_null` trong `schema.yml
 Warehouse local là bản làm việc đầy đủ 5 schema. Kho dùng chung (Neon) là **bản sao chỉ-đọc** của
 `core`, `analytics`, `meta`, cập nhật bằng `make publish` (decision #35, #36).
 
-- Chỉ Data Architect publish, và chỉ sau khi `make quality` xanh.
+- Chỉ Data Architect publish, và chỉ sau khi `make quality` xanh — `make publish` tự từ chối nếu lần quality gần nhất có check error fail hoặc cũ hơn lô nạp gần nhất (decision #40).
 - Không ai được `INSERT`/`UPDATE` trực tiếp trên kho chung: mỗi lần publish thay toàn bộ ba schema.
 - `raw` và `staging` không có trên kho chung. Truy vết một dòng `core` về `raw` phải làm ở local.
 - Cách kết nối và vận hành kho chung: [kho_du_lieu.md](kho_du_lieu.md).
