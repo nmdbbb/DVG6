@@ -27,3 +27,177 @@ models:
         data_tests:
           - unique
           - not_null
+  
+  - name: stg_vaers__data
+    description: >
+      Bản ghi VAERSDATA thuộc lô nạp success, đã đổi tên cột snake_case, cắt khoảng trắng và ép kiểu ngày/số.
+      Grain: một dòng cho mỗi bản ghi raw.vaers_data (mỗi row_hash).
+    columns:
+      - name: vaers_id
+        description: Mã báo cáo VAERS dạng chuỗi.
+        data_tests:
+          - not_null
+      - name: recvdate
+        description: Ngày CDC nhận báo cáo (date).
+      - name: state
+        description: Mã bang/lãnh thổ Mỹ viết hoa.
+      - name: age_yrs
+        description: Tuổi người tiêm tính theo năm (numeric).
+      - name: cage_yr
+        description: Tuổi tính toán theo năm từ nguồn (numeric).
+      - name: cage_mo
+        description: Tuổi tính toán theo tháng từ nguồn (numeric).
+      - name: sex
+        description: Mã giới tính gốc viết hoa (M/F/U).
+      - name: rpt_date
+        description: Ngày điền báo cáo (date).
+      - name: symptom_text
+        description: Mô tả triệu chứng bằng văn bản tự do.
+      - name: died
+        description: Cờ tử vong gốc (Y/NULL).
+      - name: datedied
+        description: Ngày tử vong (date).
+      - name: l_threat
+        description: Cờ đe dọa tính mạng gốc (Y/NULL).
+      - name: er_visit
+        description: Cờ cấp cứu gốc (Y/NULL).
+      - name: hospital
+        description: Cờ nhập viện gốc (Y/NULL).
+      - name: hospdays
+        description: Số ngày nằm viện (integer).
+      - name: x_stay
+        description: Cờ kéo dài thời gian nằm viện gốc.
+      - name: disable
+        description: Cờ khuyết tật gốc (Y/NULL).
+      - name: recovd
+        description: Tình trạng hồi phục gốc (Y/N/U).
+      - name: vax_date
+        description: Ngày tiêm vắc xin (date).
+      - name: onset_date
+        description: Ngày khởi phát triệu chứng (date).
+      - name: numdays
+        description: Số ngày khởi phát theo nguồn (integer).
+      - name: lab_data
+        description: Thông tin xét nghiệm nguyên gốc.
+      - name: v_adminby
+        description: Đơn vị thực hiện tiêm viết hoa.
+      - name: v_fundby
+        description: Nguồn chi trả vắc xin viết hoa.
+      - name: other_meds
+        description: Thuốc khác đang dùng.
+      - name: cur_ill
+        description: Bệnh hiện tại tại thời điểm tiêm.
+      - name: history
+        description: Tiền sử bệnh lý.
+      - name: prior_vax
+        description: Phản ứng với lần tiêm trước.
+      - name: splttype
+        description: Mã nhà sản xuất/báo cáo phụ.
+      - name: form_vers
+        description: Phiên bản biểu mẫu VAERS.
+      - name: todays_date
+        description: Ngày hoàn thành biểu mẫu (date).
+      - name: birth_defect
+        description: Cờ dị tật bẩm sinh gốc.
+      - name: ofc_visit
+        description: Cờ khám phòng khám gốc.
+      - name: er_ed_visit
+        description: Cờ khám cấp cứu biểu mẫu 2.0 gốc.
+      - name: allergies
+        description: Tiền sử dị ứng bằng văn bản tự do nguyên gốc.
+      - name: vax_order
+        description: Thứ tự bản ghi từ cột ORDER của nguồn.
+      - name: batch_id
+        description: Lô nạp sinh ra dòng (meta.ingestion_batch).
+      - name: ingested_at
+        description: Thời điểm ghi vào raw.
+      - name: row_hash
+        description: md5 bản ghi gốc.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_vaers__vax
+    description: >
+      Bản ghi VAERSVAX thuộc lô nạp success, đã chuẩn hóa chữ hoa và cắt khoảng trắng.
+      Grain: một dòng cho mỗi bản ghi raw.vaers_vax (mỗi row_hash).
+    columns:
+      - name: vaers_id
+        description: Mã báo cáo VAERS.
+        data_tests:
+          - not_null
+      - name: vax_type
+        description: Mã loại vắc xin viết hoa (ví dụ COVID19).
+      - name: vax_manu
+        description: Tên nhà sản xuất vắc xin viết hoa.
+      - name: vax_lot
+        description: Số lô vắc xin.
+      - name: vax_dose_series
+        description: Thứ tự mũi tiêm viết hoa.
+      - name: vax_route
+        description: Đường tiêm viết hoa.
+      - name: vax_site
+        description: Vị trí tiêm viết hoa.
+      - name: vax_name
+        description: Tên sản phẩm vắc xin.
+      - name: vax_order
+        description: Thứ tự bản ghi từ cột ORDER của nguồn.
+      - name: batch_id
+        description: Lô nạp sinh ra dòng.
+      - name: ingested_at
+        description: Thời điểm ghi vào raw.
+      - name: row_hash
+        description: md5 bản ghi gốc.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_vaers__symptoms
+    description: >
+      Triệu chứng VAERS đã unpivot từ 5 cột SYMPTOM1..SYMPTOM5 và bỏ ô rỗng.
+      Grain: một dòng cho mỗi cặp (raw_row_hash, symptom_slot) có triệu chứng khác rỗng.
+    columns:
+      - name: symptom_row_id
+        description: Khóa duy nhất của dòng triệu chứng sau unpivot (md5 của raw_row_hash và symptom_slot).
+        data_tests:
+          - unique
+          - not_null
+      - name: vaers_id
+        description: Mã báo cáo VAERS.
+        data_tests:
+          - not_null
+      - name: symptom_slot
+        description: Vị trí cột triệu chứng gốc (1 đến 5).
+      - name: symptom_name
+        description: Thuật ngữ triệu chứng MedDRA đã cắt khoảng trắng.
+        data_tests:
+          - not_null
+      - name: symptom_version
+        description: Phiên bản từ điển MedDRA (numeric).
+      - name: symptom_order
+        description: Giá trị cột ORDER gốc.
+      - name: batch_id
+        description: Lô nạp sinh ra dòng.
+      - name: ingested_at
+        description: Thời điểm ghi vào raw.
+      - name: raw_row_hash
+        description: md5 của dòng raw.vaers_symptoms gốc trước khi unpivot.
+
+  - name: stg_openfda__substances
+    description: >
+      Từ điển hoạt chất chuẩn hóa từ nhãn thuốc openFDA, đã tách mảng JSON, viết hoa, cắt khoảng trắng và khử trùng lặp.
+      Grain: một dòng cho mỗi tên hoạt chất chuẩn hóa (substance_name).
+    columns:
+      - name: substance_name
+        description: Tên hoạt chất chuẩn hóa (viết hoa, đã cắt khoảng trắng).
+        data_tests:
+          - unique
+          - not_null
+      - name: spl_id
+        description: Mã SPL của nhãn thuốc đại diện.
+      - name: batch_id
+        description: Lô nạp sinh ra dòng.
+      - name: ingested_at
+        description: Thời điểm ghi vào raw.
+      - name: row_hash
+        description: md5 bản ghi nhãn thuốc gốc.  
