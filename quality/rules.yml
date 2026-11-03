@@ -127,3 +127,15 @@
       - (select count(*) from core.fct_report_raw)
     )
   expect: {operator: "==", value: 0}
+
+- name: fct_report_symptom_distinct_reports_le_fct_report
+  description: >
+    Số báo cáo khác nhau trong fct_report_symptom không được vượt quá tổng số báo cáo trong fct_report.
+  severity: error
+  sql: |
+    select greatest(
+      (select count(distinct report_key) from core.fct_report_symptom)
+      - (select count(*) from core.fct_report),
+      0
+    )
+  expect: {operator: "==", value: 0}
