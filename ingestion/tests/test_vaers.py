@@ -2,6 +2,7 @@ import csv
 import hashlib
 import html
 import io
+import json
 import re
 import zipfile
 from datetime import date
@@ -105,3 +106,34 @@ def test_empty_csv_has_header_snapshot(tmp_path):
     pages = list(connector.fetch_live(None))
     assert len(pages) == 1 and pages[0].content == content
     assert list(connector.parse(pages[0])) == []
+
+
+def test_year_selection_uses_matching_path_and_checksum(tmp_path, monkeypatch):
+    manifest = tmp_path / "manifest.json"
+    datasets = [
+        {"year": year, "path": f"{year}.zip", "sha256": str(year), "encoding": "cp1252"}
+        for year in (2021, 2022, 2026)
+    ]
+    manifest.write_text(json.dumps({"datasets": datasets}), encoding="utf-8")
+    monkeypatch.setenv("VAERS_MANIFEST", str(manifest))
+    monkeypatch.delenv("VAERS_YEAR", raising=False)
+    assert VaersData().year == 2021
+    monkeypatch.setenv("VAERS_YEAR", "2022")
+    connector = VaersData()
+    assert connector.year == 2022
+    assert connector.zip_path.name == "2022.zip"
+    assert connector.expected_sha256 == "2022"
+    assert VaersData(year=2026).year == 2026
+    with pytest.raises(ValueError, match="registered"):
+        VaersData(year=2020)
+
+
+def test_legacy_manifest_still_supported(tmp_path, monkeypatch):
+    manifest = tmp_path / "legacy.json"
+    manifest.write_text(
+        json.dumps({"year": 2021, "path": "old.zip", "sha256": "abc", "encoding": "cp1252"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VAERS_MANIFEST", str(manifest))
+    monkeypatch.delenv("VAERS_YEAR", raising=False)
+    assert VaersData().zip_path.name == "old.zip"
