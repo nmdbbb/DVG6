@@ -1,6 +1,40 @@
 {
-  "year": 2021,
-  "path": "data/landing/vaers/2026-10-15/2021VAERSData.zip",
-  "sha256": "40035677f13798a84a88b77b74d78f5dbeca8151085e58d4a68d204d4cf40f74",
-  "encoding": "cp1252"
+  "datasets": [
+    {
+      "year": 2021,
+      "path": "data/landing/vaers/2026-10-15/2021VAERSData.zip",
+      "sha256": "40035677f13798a84a88b77b74d78f5dbeca8151085e58d4a68d204d4cf40f74",
+      "encoding": "cp1252"
+    },
+    {
+      "year": 2022,
+      "path": "data/landing/vaers/2026-10-15/2022VAERSData.zip",
+      "sha256": "161cef901dcf5e6fabf7feba3d0094518a25d51fd71f8e5b357ccdb7d69d02e6",
+      "encoding": "cp1252"
+    },
+    {
+      "year": 2023,
+      "path": "data/landing/vaers/2026-10-15/2023VAERSData.zip",
+      "sha256": "47c570a2add43ef06196793040b7832f6ee241e007f136a66e30227d6f7355da",
+      "encoding": "cp1252"
+    },
+    {
+      "year": 2024,
+      "path": "data/landing/vaers/2026-10-15/2024VAERSData.zip",
+      "sha256": "8ba2bc09e853044081ebe9b13104be55fa3d96f39f5c6974a35fba993badf284",
+      "encoding": "cp1252"
+    },
+    {
+      "year": 2025,
+      "path": "data/landing/vaers/2026-10-15/2025VAERSData.zip",
+      "sha256": "7692177d8c08ee2f16633539d5cfb4a426bcf7061fb86dc2d3230c4df02d3c1b",
+      "encoding": "cp1252"
+    },
+    {
+      "year": 2026,
+      "path": "data/landing/vaers/2026-10-15/2026VAERSData.zip",
+      "sha256": "5d01162feb638d52e2be96e7917264c213b66fe7f9b7bbc692ef522e6a3bdfc7",
+      "encoding": "cp1252"
+    }
+  ]
 }
