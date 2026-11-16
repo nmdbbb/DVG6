@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from ingestion.base import Connector
+from ingestion.sources.openfda import OpenFDA
 from ingestion.sources.source_demo import SourceDemo
 from ingestion.sources.vaers import VaersData, VaersSymptoms, VaersVax
 
 SOURCES: dict[str, type[Connector]] = {
+    OpenFDA.name: OpenFDA,
     SourceDemo.name: SourceDemo,
     VaersData.name: VaersData,
     VaersSymptoms.name: VaersSymptoms,

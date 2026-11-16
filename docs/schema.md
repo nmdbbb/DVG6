@@ -63,13 +63,14 @@ erDiagram
 
 ## Star schema đề xuất cho VAERS (mục tiêu M5)
 
-> Bản đề xuất của khung repo. **Data Architect chốt trước khi ai viết model** ([data_contract.md](data_contract.md) §1).
+> **Đã duyệt bởi Data Architect 2026-10-17** (decision #30). Grain và quy tắc NULL chính thức nằm ở [data_contract.md](data_contract.md) §1, §4.
 > Thay toàn bộ `dim_entity` / `fct_main` của dữ liệu giả.
 
 ```mermaid
 erDiagram
   dim_vaccine   ||--o{ fct_report_vaccine : vaccine_key
   dim_date      ||--o{ fct_report         : received_date_key
+  dim_date      ||--o{ fct_report         : vax_date_key
   dim_age_group ||--o{ fct_report         : age_group_key
   dim_sex       ||--o{ fct_report         : sex_key
   dim_state     ||--o{ fct_report         : state_key
@@ -87,10 +88,10 @@ erDiagram
 | `dim_vaccine` | Một dòng cho mỗi sản phẩm vắc xin khác nhau | `(vax_type, vax_manu, vax_name)` | Gom tên nhà sản xuất về ba giá trị chuẩn: `PFIZER-BIONTECH`, `MODERNA`, `JANSSEN` |
 | `dim_symptom` | Một dòng cho mỗi thuật ngữ MedDRA Preferred Term | `symptom_name` đã chuẩn hóa | Chuẩn hóa `vaccination site` → `injection site` (bài báo) |
 | `dim_allergen` | Một dòng cho mỗi chất gây dị ứng đã chuẩn hóa | `canonical_name` | Dựng từ văn bản tự do + từ điển openFDA; giữ `UNMAPPED` cho phần không khớp |
-| `dim_age_group` | Một dòng cho mỗi nhóm tuổi | `age_group_label` | 7 nhóm cố định + `UNKNOWN` cho báo cáo thiếu tuổi |
+| `dim_age_group` | Một dòng cho mỗi nhóm tuổi | `age_group_label` | 7 nhóm cố định `5-11`, `12-15`, `16-18`, `19-30`, `31-50`, `51-65`, `66+` + `UNKNOWN` cho báo cáo thiếu tuổi. `AGE_YRS < 5` cũng vào `UNKNOWN` (ngoài phạm vi bài báo, vẫn giữ `age_yrs`) |
 | `dim_sex` | Một dòng cho mỗi giới tính | `sex_code` | `M`, `F`, `U` |
 | `dim_state` | Một dòng cho mỗi bang | `state_code` | + `UNKNOWN` |
-| `dim_date` | Một dòng cho mỗi ngày | `date_day` | Phủ 2020-01-01 → nay |
+| `dim_date` | Một dòng cho mỗi ngày | `date_day` | Phủ 2020-01-01 → 2025-12-31 (cố định để build lặp lại được) + `UNKNOWN` |
 
 Mọi dimension có dòng `UNKNOWN` với khóa `-1`: báo cáo không map được **vẫn vào fact**, không âm thầm biến mất khi join.
 
@@ -99,7 +100,7 @@ Mọi dimension có dòng `UNKNOWN` với khóa `-1`: báo cáo không map đư�
 | Bảng | Grain | Độ đo | Khóa ngoại |
 |---|---|---|---|
 | `fct_report` | **Một dòng cho mỗi báo cáo đã khử trùng lặp** | `age_yrs`, `numdays` (số ngày từ tiêm tới khởi phát), `hospdays`, các cờ `died` / `hospital` / `er_visit` / `life_threatening` / `disabled` | `received_date_key`, `vax_date_key`, `age_group_key`, `sex_key`, `state_key` |
-| `fct_report_vaccine` | Một dòng cho mỗi (báo cáo, vắc xin, mũi) | `dose_series` | `report_key`, `vaccine_key` |
+| `fct_report_vaccine` | Một dòng cho mỗi (báo cáo, vắc xin, `dose_series`) | `dose_series` | `report_key`, `vaccine_key` |
 | `fct_report_symptom` | Một dòng cho mỗi (báo cáo, triệu chứng) | — (bảng đếm) | `report_key`, `symptom_key` |
 | `fct_report_allergen` | Một dòng cho mỗi (báo cáo, chất gây dị ứng) | `match_type` (`exact` / `fuzzy` / `unmapped`) | `report_key`, `allergen_key` |
 

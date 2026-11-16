@@ -249,4 +249,4 @@ Mỗi vai: mục tiêu, việc cụ thể theo mốc, ai cần phối hợp, và
 
 ---
 
-Tài liệu: [business case](docs/business_case.md) · [kế hoạch phân tích](docs/analysis_plan.md) · [schema](docs/schema.md) · [data contract](docs/data_contract.md) · [nguồn](docs/sources.md) · [decision log](docs/decision_log.md) · [cleaning log](docs/cleaning_log.md) · [quality report](docs/quality_report.md) · [runbook](docs/runbook.md)
+Tài liệu: [business case](docs/business_case.md) · [kế hoạch phân tích](docs/analysis_plan.md) · [schema](docs/schema.md) · [kho dữ liệu](docs/kho_du_lieu.md) · [data contract](docs/data_contract.md) · [nguồn](docs/sources.md) · [decision log](docs/decision_log.md) · [cleaning log](docs/cleaning_log.md) · [quality report](docs/quality_report.md) · [runbook](docs/runbook.md)

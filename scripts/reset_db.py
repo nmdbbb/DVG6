@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import typer
 
-from common.db import connect
+from common.db import assert_local, connect
 
 SCHEMAS = ["analytics", "core", "staging", "raw", "meta"]
 
 
 def main() -> None:
+    assert_local("reset_db")
     with connect("admin", autocommit=True) as conn:
         for schema in SCHEMAS:
             conn.execute(f'drop schema if exists "{schema}" cascade')

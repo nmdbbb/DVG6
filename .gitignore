@@ -36,6 +36,9 @@ web/dist/
 *.sqlite
 *.db
 
+# --- Claude Code: cấu hình cá nhân, không commit ---
+.claude/settings.local.json
+
 # --- IDE / OS ---
 .vscode/
 .idea/

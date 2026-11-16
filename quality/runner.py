@@ -23,7 +23,7 @@ import typer
 import yaml
 from psycopg import sql
 
-from common.db import REPO_ROOT, connect
+from common.db import REPO_ROOT, assert_local, connect
 
 RULES_FILE = Path(__file__).with_name("rules.yml")
 REPORT_FILE = REPO_ROOT / "docs" / "quality_report.md"
@@ -189,6 +189,7 @@ def main(
     with_dbt: bool = typer.Option(False, "--with-dbt", help="Chạy thêm dbt test."),
     profile: bool = typer.Option(True, help="Đo số dòng/tỉ lệ NULL cho Overview và Catalog."),
 ) -> None:
+    assert_local("quality")
     rules = load_rules()
     if severity != "all":
         rules = [r for r in rules if r["severity"] == severity]

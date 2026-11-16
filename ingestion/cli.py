@@ -17,6 +17,7 @@ from datetime import date, datetime
 
 import typer
 
+from common.db import assert_local
 from ingestion import loader, registry
 from ingestion.base import SOURCE_MODES
 
@@ -28,6 +29,7 @@ def _parse_since(value: str | None) -> date | None:
 
 
 def _mode(value: str | None, since: str | None = None) -> str:
+    assert_local("ingest")
     mode = (value or os.environ.get("SOURCE_MODE") or "live").strip().lower()
     if mode not in SOURCE_MODES:
         raise typer.BadParameter(f"--endpoint / SOURCE_MODE phải là {' | '.join(SOURCE_MODES)}")
