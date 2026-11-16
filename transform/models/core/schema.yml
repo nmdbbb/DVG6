@@ -433,3 +433,78 @@ models:
           - not_null
       - name: batch_id
         description: Lô nạp sinh ra dòng.
+
+  - name: fct_report_symptom
+    description: >
+      Bảng cầu nối giữa báo cáo đã khử trùng lặp (fct_report) và triệu chứng chuẩn hóa (dim_symptom).
+      Grain: một dòng cho mỗi cặp (report_key, symptom_key); triệu chứng lặp trong cùng báo cáo chỉ tính một lần.
+    columns:
+      - name: report_key
+        description: Khóa ngoại trỏ tới fct_report.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_report')
+                field: report_key
+      - name: symptom_key
+        description: Khóa ngoại trỏ tới dim_symptom (-1 nếu không khớp).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_symptom')
+                field: symptom_key
+
+  - name: fct_report_vaccine
+    description: >
+      Bảng cầu nối giữa báo cáo đã khử trùng lặp (fct_report) và sản phẩm vắc xin COVID-19 (dim_vaccine).
+      Grain: một dòng cho mỗi bộ (report_key, vaccine_key, dose_series).
+    columns:
+      - name: report_key
+        description: Khóa ngoại trỏ tới fct_report.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_report')
+                field: report_key
+      - name: vaccine_key
+        description: Khóa ngoại trỏ tới dim_vaccine (-1 nếu không khớp).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_vaccine')
+                field: vaccine_key
+      - name: dose_series
+        description: Thứ tự liều tiêm (NULL nếu nguồn để trống hoặc UNK).
+
+  - name: fct_report_allergen
+    description: >
+      Bảng cầu nối giữa báo cáo đã khử trùng lặp (fct_report) và chất gây dị ứng (dim_allergen).
+      Grain: một dòng cho mỗi cặp (report_key, allergen_key).
+    columns:
+      - name: report_key
+        description: Khóa ngoại trỏ tới fct_report.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_report')
+                field: report_key
+      - name: allergen_key
+        description: Khóa ngoại trỏ tới dim_allergen (-1 nếu không khớp).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_allergen')
+                field: allergen_key
+      - name: match_type
+        description: Phương thức khớp từ điển (exact, fuzzy, unmapped).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['exact', 'fuzzy', 'unmapped']
