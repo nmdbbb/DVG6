@@ -8,8 +8,8 @@ Giữ nguyên framework một connector → một bảng; không sửa loader ha
 
 ### Chọn năm 2021–2026
 
-Manifest `ingestion/sources/vaers_landing.json` đăng ký riêng đường dẫn và SHA-256
-cho sáu ZIP 2021–2026. Mặc định vẫn là 2021. Ví dụ preview năm 2022:
+Sổ [sources_landing.md](sources_landing.md) đăng ký đường dẫn và SHA-256
+cho sáu ZIP 2021–2026; connector đọc thẳng từ đó (file `{năm}VAERSData.zip`). Mặc định vẫn là 2021. Ví dụ preview năm 2022:
 
 ```powershell
 python -m ingestion.sources.vaers --year 2022 --limit 10
@@ -49,10 +49,10 @@ python -m pytest ingestion/tests -q
 Preview kiểm SHA-256 rồi parse tối đa 10 bản ghi mỗi CSV, không hiển thị nội dung
 báo cáo, không kết nối database và không tạo snapshot thật. Có thể tăng `--limit`.
 
-`ingestion/sources/vaers_landing.json` đăng ký ZIP, năm, SHA-256 và encoding
-Windows-1252 (`cp1252`). Không đoán hoặc thay thế ký tự lỗi khi decode. Muốn dùng
-file khác, kiểm tra bằng `ingestion.inspect_vaers`, thêm nhật ký landing rồi cập nhật
-manifest; có thể chọn manifest riêng bằng biến môi trường `VAERS_MANIFEST`.
+Encoding của CSV là Windows-1252 (`cp1252`), đặt thành hằng số `ENCODING` trong
+`ingestion/sources/vaers.py`. Không đoán hoặc thay thế ký tự lỗi khi decode. Muốn dùng
+file khác, kiểm tra bằng `ingestion.inspect_vaers`, chạy `make landing-register` để thêm dòng
+mới vào `sources_landing.md` và ghi `decision_log.md`; connector tự lấy dòng mới nhất của năm đó.
 Không thay checksum chỉ để bỏ qua lỗi kiểm tra file.
 
 ## Nạp thử khi PostgreSQL và mock server đang chạy

@@ -80,15 +80,16 @@ Quy trình nhóm dùng:
    [sources_landing.md](sources_landing.md) — đây là sổ đăng ký của cả nhóm.
 4. `make landing-upload SOURCE=vaers` đẩy file lên GitHub Release để 6 người còn lại chỉ cần
    `make landing-fetch`, không ai phải đụng CAPTCHA của CDC nữa.
-5. `python -m ingestion.inspect_vaers <đường-dẫn-ZIP>` ghi đường dẫn, checksum và encoding vào
-   `ingestion/sources/vaers_landing.json` — manifest mà ba connector đọc.
+5. (Tùy chọn) `python -m ingestion.inspect_vaers <đường-dẫn-ZIP>` kiểm CRC, header và sha256 của
+   ZIP trước khi đăng ký. Lệnh chỉ in kết quả, không ghi file nào.
 6. Chạy riêng từng connector: `make ingest SOURCE=vaers_data`, `SOURCE=vaers_symptoms`,
    `SOURCE=vaers_vax`. Mỗi connector tự kiểm sha256 trước khi đọc CSV. Cách chạy không cần make
    và cách xem trước dữ liệu: [vaers_ingestion.md](vaers_ingestion.md).
 
-> **Đang có hai sổ đăng ký cho cùng một file:** `sources_landing.md` (bước 3, cho cả nhóm) và
-> `vaers_landing.json` (bước 5, cho connector). Hai chỗ ghi cùng một sha256 nên có thể lệch nhau.
-> Cần gộp làm một — xem issue về việc này.
+> **Chỉ có một sổ đăng ký:** [sources_landing.md](sources_landing.md). `make landing-verify`
+> và ba connector `vaers_*` cùng đọc sha256 từ đó (encoding `cp1252` là hằng số trong
+> `ingestion/sources/vaers.py`). Sửa sổ thì cả hai nơi cùng thấy.
+
 
 
 Bản ZIP là **bản gốc bất biến** của nguồn: connector lưu từng khối CSV thành trang trong `data/raw/vaers/<ngày>/<batch_id>/`, nên mock_server phát lại được và `make mock-check` vẫn khớp `_row_hash` như mọi nguồn khác.
