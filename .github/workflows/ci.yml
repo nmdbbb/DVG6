@@ -104,3 +104,18 @@ jobs:
           if docker compose run --rm -T             -e SHARED_DATABASE_URL='postgresql://qtdl:change_me@db:5432/qtdl_shared'             etl python -m scripts.publish; then
             echo "::error::publish khong chan duoc dich local"; exit 1
           fi
+
+      - name: Cổng quality phải chặn dữ liệu hỏng
+        run: |
+          make demo-break
+          if make quality; then echo "::error::quality không chặn dữ liệu hỏng"; exit 1; fi
+
+      - name: "Cong publish: quality vua do thi publish phai tu choi"
+        run: |
+          if docker compose run --rm -T             -e SHARED_DATABASE_URL='postgresql://qtdl:change_me@db:5432/qtdl_shared'             etl python -m scripts.publish --allow-local-target; then
+            echo "::error::publish van chay khi quality co check error fail"; exit 1
+          fi
+
+      - name: Log khi lỗi
+        if: failure()
+        run: docker compose logs db
