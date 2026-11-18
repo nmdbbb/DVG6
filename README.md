@@ -2,7 +2,7 @@
 
 Warehouse PostgreSQL nhiều tầng (`raw → staging → core → analytics`, cộng `meta`) với ingestion có nhật ký lô, mock server làm đường dự phòng cho nguồn, transform bằng dbt, cổng chất lượng tự động và dashboard React hiển thị cả kết quả phân tích lẫn sức khỏe dữ liệu.
 
-**Topic (chốt 2026-10-11):** phản ứng bất lợi sau tiêm vắc xin COVID-19 trên dữ liệu [VAERS](https://vaers.hhs.gov/data/datasets.html), tái lập và mở rộng [Flora et al. 2022](https://doi.org/10.3390/ijms23158235). Câu hỏi nghiên cứu: [docs/business_case.md](docs/business_case.md) · cách làm từng phân tích: [docs/analysis_plan.md](docs/analysis_plan.md).
+**Topic (chốt 2026-10-11):** phản ứng bất lợi sau tiêm vắc xin COVID-19 trên dữ liệu [VAERS](https://vaers.hhs.gov/data/datasets.html), tái lập và mở rộng [Flora et al. 2022](https://doi.org/10.3390/ijms23158235). Câu hỏi nghiên cứu: [docs/business_case.md](docs/business_case.md) · cách làm từng phân tích: [docs/analysis_plan.md](docs/analysis_plan.md) · hợp đồng dashboard theo thời gian và truy vết biến động: [docs/dashboard_analysis_contract.md](docs/dashboard_analysis_contract.md).
 
 **Trạng thái:** M1–M4 xong, đang chạy trên nguồn giả `source_demo`. M5 đang mở — xem [issue theo vai](https://github.com/nmdbbb/DVG6/issues).
 
@@ -221,9 +221,9 @@ Mỗi vai: mục tiêu, việc cụ thể theo mốc, ai cần phối hợp, và
 **Mục tiêu:** trả lời câu hỏi nghiên cứu bằng phân tích tái tạo được, kèm hình đủ chất lượng đưa thẳng vào báo cáo.
 
 **Việc chính**
-- Notebook EDA và regression trong `analysis/notebooks/`, đọc từ `core`/`analytics` bằng role `analyst` (`ANALYST_PASSWORD`), không đọc file rời.
+- Notebook tham chiếu visualization dashboard nằm trong `analysis/notebooks/frontend/`; phân tích đặc trưng/mối liên hệ cho model nằm trong `analysis/notebooks/backend/`. Cả hai đọc warehouse bằng role `analyst` (`ANALYST_PASSWORD`). Xem [dashboard_analysis_contract.md](docs/dashboard_analysis_contract.md) để biết cách các notebook được dùng và giới hạn hiện tại.
 - Kiểm giả định mô hình (phân phối phần dư, đa cộng tuyến, phương sai sai số…) và ghi kết quả kiểm ngay trong notebook.
-- Ghi kết quả (hệ số, sai số chuẩn, p-value, R², ma trận tương quan) vào bảng để API `/analysis/*` phục vụ — không có số nào chỉ tồn tại trong notebook.
+- Kết quả dự kiến phục vụ API `/analysis/*` cần được materialize vào `analytics` với snapshot/version, `as_of`, cửa sổ thời gian, mẫu số và lineage; notebook hiện mới lưu artifact cục bộ.
 - Xuất hình và bảng cho báo cáo vào `analysis/reports/`.
 
 **Phối hợp:** Analysis Lead (kế hoạch thống kê, duyệt kết luận), Transform (view `analytics` cần thêm), Dashboard (trang Phân tích, Khám phá).
@@ -239,7 +239,7 @@ Mỗi vai: mục tiêu, việc cụ thể theo mốc, ai cần phối hợp, và
 **Việc chính**
 - API trong [api/](api/): chỉ đọc `analytics` + `meta` qua role `api_reader`; response bọc `{data, meta}`; tham số qua Pydantic + bind parameter. Endpoint M6 đã có chỗ ở `routers/explore.py`, `routers/analysis.py`.
 - Mỗi endpoint một test trong `api/tests/`, chạy trên database thật.
-- Frontend trong [web/](web/): trang Khám phá và Phân tích (M6), giữ Tổng quan, Sức khỏe pipeline, Catalog. Mỗi biểu đồ trong `ChartCard` (hiện `as_of` + nguồn, nút Tải CSV), bộ lọc trên URL qua `FilterBar`.
+- Frontend trong [web/](web/): trang Khám phá và Phân tích (M6), giữ Tổng quan, Sức khỏe pipeline, Catalog. Dashboard cần tập trung vào biến động theo `recvdate`, đối chiếu các kỳ tương đương, và drill-down từ delta về report/batch/transform đã đóng góp. `recvdate` là ngày nhận báo cáo, còn `meta.ingestion_batch` là thời điểm dữ liệu được nạp; không nhập nhằng hai trục thời gian này.
 - Đổi API thì chạy `cd web && npm run gen:api` để sinh lại type, không gõ tay interface.
 
 **Phối hợp:** Transform (view analytics), Analysis & Visualization (bảng kết quả), Analysis Lead (cách hiển thị check chất lượng).

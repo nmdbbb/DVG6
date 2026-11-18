@@ -11,6 +11,14 @@ data/**
 !.env.example
 
 # --- Python ---
+analysis/reports/*
+!analysis/reports/.gitkeep
+!analysis/reports/figures/
+!analysis/reports/tables/
+analysis/reports/figures/*
+!analysis/reports/figures/.gitkeep
+analysis/reports/tables/*
+!analysis/reports/tables/.gitkeep
 __pycache__/
 *.py[cod]
 .venv/
