@@ -58,6 +58,27 @@ Phân rã đóng góp phải cộng lại bằng delta hiển thị. Nếu một
 - Cho xem lineage của feature và biết giá trị đến từ trường nguồn, quy tắc cleaning hay phép phân tích dẫn xuất.
 - Không xếp hạng sản phẩm an toàn/nguy hiểm bằng số báo cáo đơn thuần. Không trình bày liên hệ giữa triệu chứng như nhân quả hoặc lời khuyên điều trị cá nhân.
 
+## Theo dõi mô hình và quyết định huấn luyện lại
+
+Dashboard cần có một khu vực dành cho mô hình dự báo, tách rõ dự báo với thống kê mô tả VAERS. Mục đích là giúp người dùng theo dõi mô hình đang hoạt động, kiểm tra khi dữ liệu thay đổi và đánh giá một phiên bản huấn luyện mới trước khi thay thế. Đây là hỗ trợ phân tích; không đưa ra chẩn đoán hay quyết định điều trị.
+
+### Nội dung hiển thị
+
+- **Prediction:** kết quả dự đoán cho từng kỳ hoặc nhóm được chọn, gồm nhãn/lớp dự đoán, xác suất (nếu mô hình có xác suất), ngưỡng phân loại, model version, thời điểm dự đoán và phạm vi dữ liệu đầu vào. Cho phép xem tổng hợp theo thời gian và drill-down tới bản ghi nếu quyền truy cập cho phép.
+- **Thực trạng (observed outcome):** khi nhãn thực tế đã có và đủ trưởng thành, đặt cạnh dự đoán trên cùng cohort và cùng định nghĩa thời gian. Ghi rõ số nhãn đã quan sát, số còn thiếu/chưa đủ thời gian theo dõi và thời điểm chốt nhãn. Không coi symptom được ghi trong một báo cáo là kết quả đã được xác minh lâm sàng.
+- **Chất lượng dự báo:** chọn metric phù hợp với target và mất cân bằng lớp, chẳng hạn PR-AUC, ROC-AUC, precision/recall, F1, confusion matrix; thêm Brier score hoặc biểu đồ calibration khi xác suất có ý nghĩa. Luôn hiện cỡ mẫu, khoảng thời gian, ngưỡng và phiên bản model. Không tính metric trên dự đoán chưa có nhãn thực tế.
+- **Distribution shift:** theo dõi riêng thay đổi phân phối feature đầu vào và thay đổi hiệu năng khi nhãn thực tế đã có. Có thể dùng PSI hoặc Jensen–Shannon cho phân phối phân loại/nhóm, KS hoặc Wasserstein cho biến liên tục, và so sánh tỷ lệ thiếu/UNKNOWN. Với performance shift, theo dõi metric dự báo theo các cửa sổ thời gian. Hiện baseline/reference window, current window, cỡ mẫu và giá trị metric; ngưỡng cảnh báo phải được hiệu chỉnh theo dữ liệu và kiểm định, không mặc định một ngưỡng chung là bằng chứng mô hình hỏng.
+- **Bản ghi liên quan tới shift:** khi người dùng chọn một feature hoặc nhóm có shift, hiển thị các bản ghi mới/thay đổi đóng góp vào cửa sổ hiện tại, các giá trị của chúng so với baseline, report/batch/source và lineage transform. Cho phép lọc/tải danh sách theo quyền. Đây là các bản ghi liên quan về mặt thống kê, không tự chứng minh chúng gây ra shift.
+
+### Luồng xem xét và huấn luyện lại
+
+1. Dashboard cảnh báo shift hoặc suy giảm metric; người dùng xem baseline, cửa sổ hiện tại, cỡ mẫu, nhãn đã trưởng thành và các bản ghi liên quan.
+2. Người có quyền chọn **đề xuất huấn luyện lại** với snapshot dữ liệu đã cập nhật. Trước khi chạy, hiển thị rõ khoảng ngày, nguồn/batch, quy tắc cleaning, định nghĩa target, số dòng/nhãn dùng được, tỷ lệ thiếu và phiên bản code/feature.
+3. Huấn luyện thành một candidate version; đánh giá trên temporal holdout hoặc quy trình validation đã định trước. So sánh candidate với model đang chạy về performance, calibration, coverage theo các nhóm, độ bất định và các kiểm tra chất lượng. Tránh leakage bằng cách chỉ dùng thông tin sẵn có tại thời điểm dự đoán.
+4. Chỉ người được phân quyền mới có thể phê duyệt promote candidate. Lưu người yêu cầu/duyệt, dataset snapshot, code/config, metrics và thời gian. Hỗ trợ từ chối, rollback về phiên bản trước và theo dõi sau triển khai. Không tự động ghi đè model đang hoạt động chỉ vì phát hiện shift.
+
+Các kết quả huấn luyện lại cần được diễn giải theo đúng target và chất lượng nhãn. Với dữ liệu VAERS, số báo cáo và trường outcome tự báo cáo không phải tỷ lệ biến cố trong toàn bộ người tiêm; mô hình không được trình bày như công cụ chẩn đoán cá nhân nếu chưa có xác nhận và quy trình đánh giá phù hợp.
+
 ## Công việc dữ liệu/API cần có để truy vết đáng tin cậy
 
 Warehouse hiện có các thành phần hữu ích: `meta.ingestion_batch` lưu nguồn, mode, trạng thái, thời gian và số dòng; `meta.ingestion_batch_row` lưu row hash đã thấy trong từng batch; `core.fct_report` có `batch_id`. Tuy nhiên, notebook hiện chỉ lưu artifact cục bộ, và các bridge fact symptom/vaccine không giữ lineage của từng raw row. Chỉ dựa vào `batch_id` cấp report thì chưa chứng minh được raw symptom/vaccine row nào làm đổi metric dẫn xuất.
@@ -79,9 +100,9 @@ Cho tới khi bổ sung các phần này, batch page có thể giải thích **k
 | Tổng quan | Báo cáo theo ngày nhận, batch thành công gần nhất, quality status, symptom tăng/giảm nhiều | So sánh kỳ và danh sách report/batch đóng góp |
 | Triệu chứng | Count và phần trăm báo cáo theo thời gian; lọc symptom/product/nhóm; phân bố onset-delay ở biểu đồ riêng | Báo cáo vào/ra tập symptom/nhóm và batch/transform làm đổi membership |
 | Cohort | So sánh A12 theo product/dose-series/age/sex/year; hiện `n` và UNKNOWN rõ ràng | Báo cáo mới/sửa đổi và biến động mẫu số của từng nhóm |
-| Quan hệ / hỗ trợ mô hình | Tín hiệu backend về đồng xuất hiện, independence, clustering hoặc mô hình; kèm sample size và validation/version | Provenance feature, thời gian phân tích, model version và snapshot nguồn |
+| Quan hệ / hỗ trợ mô hình | Tín hiệu backend; predictions cạnh observed outcomes; metrics hiệu năng/calibration và distribution shift theo phiên bản/cửa sổ | Drill tới bản ghi/batch liên quan; so sánh candidate retrain với model hiện tại; lưu quyết định promote/rollback |
 | Lineage dữ liệu | Lịch sử batch, raw snapshot, transform, quality và publication | Drill từ delta trên dashboard về source batch và report liên quan |
 
 ## Phạm vi tài liệu
 
-Tài liệu này đặc tả hành vi và hợp đồng dữ liệu. Chưa triển khai trang dashboard, API route, analytics model hay code dự báo. Cần chốt định nghĩa metric, cách lưu lineage và kế hoạch validation mô hình trước khi làm các phần đó.
+Tài liệu này đặc tả hành vi và hợp đồng dữ liệu. Chưa triển khai trang dashboard, API route, analytics model, giám sát shift hay code dự báo/huấn luyện lại. Cần chốt target, nhãn thực tế, metric/threshold, lineage và quy trình validation/phê duyệt mô hình trước khi triển khai.
