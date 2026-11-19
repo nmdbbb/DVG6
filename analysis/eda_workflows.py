@@ -55,9 +55,7 @@ def run_overview() -> dict[str, pl.DataFrame]:
         from analysis.notebook_utils import connect
 
         with connect() as conn:
-            statement = sql.SQL("SELECT COUNT(*) FROM core.{}").format(
-                sql.Identifier(table)
-            )
+            statement = sql.SQL("SELECT COUNT(*) FROM core.{}").format(sql.Identifier(table))
             counts.append({"table_name": table, "rows": conn.execute(statement).fetchone()[0]})
     table_counts = pl.DataFrame(counts)
     save_csv(table_counts, "00_core_table_counts.csv")
@@ -161,8 +159,11 @@ def run_a1() -> dict[str, pl.DataFrame]:
     import matplotlib.pyplot as plt
 
     require_core_relations(
-        "fct_report", "fct_report_symptom", "fct_report_vaccine",
-        "dim_symptom", "dim_vaccine",
+        "fct_report",
+        "fct_report_symptom",
+        "fct_report_vaccine",
+        "dim_symptom",
+        "dim_vaccine",
     )
     require_nonempty_core("fct_report")
     result = query_df(
@@ -203,7 +204,8 @@ def run_a1() -> dict[str, pl.DataFrame]:
         pdf = result.to_pandas()
         symptoms = pdf.groupby("symptom_name")["report_count"].sum().sort_values().index
         manufacturers = [
-            maker for maker in ("PFIZER-BIONTECH", "MODERNA", "JANSSEN")
+            maker
+            for maker in ("PFIZER-BIONTECH", "MODERNA", "JANSSEN")
             if maker in set(pdf["vax_manu"])
         ]
         x = np.arange(len(symptoms))
@@ -279,47 +281,44 @@ def run_a2() -> dict[str, pl.DataFrame]:
     )
     save_csv(result, "02_age_sex_symptom_frequency.csv")
     if not result.is_empty():
-        wide = result.pivot(
-            on="symptom_name", index=["age_group_label", "sort_order", "sex_code"],
-            values="pct_group_reports", aggregate_function="first",
-        ).sort(["sort_order", "sex_code"]).fill_null(0)
-        features = [c for c in wide.columns
-                    if c not in {"age_group_label", "sort_order", "sex_code"}]
+        wide = (
+            result.pivot(
+                on="symptom_name",
+                index=["age_group_label", "sort_order", "sex_code"],
+                values="pct_group_reports",
+                aggregate_function="first",
+            )
+            .sort(["sort_order", "sex_code"])
+            .fill_null(0)
+        )
+        features = [
+            c for c in wide.columns if c not in {"age_group_label", "sort_order", "sex_code"}
+        ]
         sex_tables = {}
         sex_matrices = {}
         for sex_code, sex_label in (("M", "male"), ("F", "female")):
             sex_wide = wide.filter(pl.col("sex_code") == sex_code)
-            sex_tables[sex_label] = sex_wide.select(
-                ["age_group_label", *features]
-            ).rename({"age_group_label": "age_group"})
+            sex_tables[sex_label] = sex_wide.select(["age_group_label", *features]).rename(
+                {"age_group_label": "age_group"}
+            )
             save_csv(sex_tables[sex_label], f"02_{sex_label}_symptom_frequency.csv")
             sex_matrices[sex_code] = sex_wide.select(
                 [pl.col(column).cast(pl.Float64) for column in features]
             ).to_numpy()
 
-        vmax = max(
-            float(np.nanmax(matrix))
-            for matrix in sex_matrices.values()
-            if matrix.size
-        )
+        vmax = max(float(np.nanmax(matrix)) for matrix in sex_matrices.values() if matrix.size)
         vmax = vmax if vmax > 0 else 1.0
         fig = plt.figure(figsize=(17, 7))
-        grid = fig.add_gridspec(
-            1, 3, width_ratios=(1, 1, 0.035), wspace=0.26
-        )
+        grid = fig.add_gridspec(1, 3, width_ratios=(1, 1, 0.035), wspace=0.26)
         axes = [
             fig.add_subplot(grid[0, 0]),
             fig.add_subplot(grid[0, 1]),
         ]
         colorbar_ax = fig.add_subplot(grid[0, 2])
-        for ax, (sex_code, sex_label) in zip(
-            axes, (("M", "Male"), ("F", "Female")), strict=True
-        ):
+        for ax, (sex_code, sex_label) in zip(axes, (("M", "Male"), ("F", "Female")), strict=True):
             table = sex_tables[sex_label.lower()]
             labels = table["age_group"].to_list()
-            im = ax.imshow(
-                sex_matrices[sex_code], aspect="auto", cmap="YlOrRd", vmin=0, vmax=vmax
-            )
+            im = ax.imshow(sex_matrices[sex_code], aspect="auto", cmap="YlOrRd", vmin=0, vmax=vmax)
             ax.set_xlim(-0.5, len(features) - 0.5)
             ax.set_yticks(range(len(labels)), labels)
             ax.set_xticks(range(len(features)), features, rotation=60, ha="right")
@@ -328,16 +327,23 @@ def run_a2() -> dict[str, pl.DataFrame]:
             ax.set_title(f"{sex_label}: symptom reports by age group", fontsize=13, pad=10)
         fig.colorbar(im, cax=colorbar_ax, label="Reports within age-sex group (%)")
         _save_plot(fig, "02_age_sex_heatmap.png")
-        return {"male_symptom_frequency": sex_tables["male"],
-                "female_symptom_frequency": sex_tables["female"]}
+        return {
+            "male_symptom_frequency": sex_tables["male"],
+            "female_symptom_frequency": sex_tables["female"],
+        }
     return {"age_sex_frequency": result}
 
 
 def run_a3() -> dict[str, pl.DataFrame]:
     """Test independence of manufacturer/year and top-10 symptom profiles."""
     require_core_relations(
-        "fct_report", "fct_report_symptom", "dim_symptom",
-        "fct_report_vaccine", "dim_vaccine", "dim_age_group", "dim_sex",
+        "fct_report",
+        "fct_report_symptom",
+        "dim_symptom",
+        "fct_report_vaccine",
+        "dim_vaccine",
+        "dim_age_group",
+        "dim_sex",
     )
     require_nonempty_core("fct_report")
     reports = query_df(
@@ -427,23 +433,23 @@ def run_a3() -> dict[str, pl.DataFrame]:
         observed = table.to_numpy(dtype=np.int64)
         if observed.shape[0] < 2 or observed.shape[1] < 2:
             raise RuntimeError(f"A3 không đủ nhóm để kiểm định {pair_name}.")
-        chi2, p_value, degrees_freedom, expected = chi2_contingency(
-            observed, correction=False
-        )
+        chi2, p_value, degrees_freedom, expected = chi2_contingency(observed, correction=False)
         n = int(observed.sum())
         denominator = n * min(observed.shape[0] - 1, observed.shape[1] - 1)
-        test_rows.append({
-            "variable_pair": pair_name,
-            "chi_square": float(chi2),
-            "degrees_freedom": int(degrees_freedom),
-            "p_value": float(p_value),
-            "p_adjusted_bonferroni": min(float(p_value) * n_comparisons, 1.0),
-            "cramers_v": float(np.sqrt(chi2 / denominator)) if denominator else np.nan,
-            "reports": n,
-            "min_expected_count": float(expected.min()),
-            "expected_cells_below_5": int((expected < 5).sum()),
-            "symptom_profiles_after_pooling": int(table.shape[1]),
-        })
+        test_rows.append(
+            {
+                "variable_pair": pair_name,
+                "chi_square": float(chi2),
+                "degrees_freedom": int(degrees_freedom),
+                "p_value": float(p_value),
+                "p_adjusted_bonferroni": min(float(p_value) * n_comparisons, 1.0),
+                "cramers_v": float(np.sqrt(chi2 / denominator)) if denominator else np.nan,
+                "reports": n,
+                "min_expected_count": float(expected.min()),
+                "expected_cells_below_5": int((expected < 5).sum()),
+                "symptom_profiles_after_pooling": int(table.shape[1]),
+            }
+        )
 
     maker_output = pl.from_pandas(maker_table.rename_axis("manufacturer").reset_index())
     year_output = pl.from_pandas(year_table.rename_axis("report_year").reset_index())
@@ -467,9 +473,7 @@ def run_a3() -> dict[str, pl.DataFrame]:
 def run_a4() -> dict[str, pl.DataFrame]:
     import matplotlib.pyplot as plt
 
-    require_core_relations(
-        "fct_report", "fct_report_symptom", "dim_symptom", "dim_age_group"
-    )
+    require_core_relations("fct_report", "fct_report_symptom", "dim_symptom", "dim_age_group")
     require_nonempty_core("fct_report")
     data = query_df(
         """
@@ -503,7 +507,9 @@ def run_a4() -> dict[str, pl.DataFrame]:
     if data.height < 2:
         raise RuntimeError("Cần dữ liệu của ít nhất hai triệu chứng để phân cụm.")
     wide = data.pivot(
-        on="age_group_label", index="symptom_name", values="reports",
+        on="age_group_label",
+        index="symptom_name",
+        values="reports",
         aggregate_function="sum",
     ).fill_null(0)
     names = wide["symptom_name"].to_list()
@@ -552,9 +558,7 @@ def run_a5() -> dict[str, pl.DataFrame]:
     matrix = matrix.reindex(index=all_ids, columns=names, fill_value=False)
     from mlxtend.frequent_patterns import apriori, association_rules
 
-    frequent = apriori(
-        matrix, min_support=0.01, use_colnames=True, max_len=3, low_memory=True
-    )
+    frequent = apriori(matrix, min_support=0.01, use_colnames=True, max_len=3, low_memory=True)
     if frequent.empty or not frequent["itemsets"].map(len).gt(1).any():
         output = pl.DataFrame()
     else:
@@ -604,14 +608,11 @@ def run_a11(top_n: int = 10, min_pair_reports: int = 1) -> dict[str, pl.DataFram
         [top_n],
     ).to_pandas()
     if n_reports == 0 or selected.empty:
-        raise RuntimeError("No reports or selected symptoms are available for co-occurrence analysis.")
+        raise RuntimeError(
+            "No reports or selected symptoms are available for co-occurrence analysis."
+        )
 
-    names = (
-        selected[["symptom_key", "symptom_name"]]
-        .drop_duplicates()
-        ["symptom_name"]
-        .tolist()
-    )
+    names = selected[["symptom_key", "symptom_name"]].drop_duplicates()["symptom_name"].tolist()
     binary = pd.crosstab(selected["report_key"], selected["symptom_name"])
     binary = binary.reindex(columns=names, fill_value=0).astype(bool)
     symptom_reports = binary.sum(axis=0).to_numpy(dtype=np.int64)
@@ -682,7 +683,9 @@ def run_a11(top_n: int = 10, min_pair_reports: int = 1) -> dict[str, pl.DataFram
             ax_counts.text(j, i, f"{co_counts[i, j]:,}", ha="center", va="center", fontsize=7)
             if i != j:
                 color = "white" if lift[i, j] < 0.65 or lift[i, j] > vmax * 0.75 else "#222222"
-                ax_lift.text(j, i, f"{lift[i, j]:.2f}", ha="center", va="center", fontsize=7, color=color)
+                ax_lift.text(
+                    j, i, f"{lift[i, j]:.2f}", ha="center", va="center", fontsize=7, color=color
+                )
     fig.colorbar(count_image, ax=ax_counts, label="Distinct reports")
     fig.colorbar(lift_image, ax=ax_lift, label=f"Lift (color scale capped at {vmax:.2f})")
     fig.suptitle(
@@ -733,8 +736,13 @@ def run_a12(
         raise ValueError("top_n must be a positive integer")
 
     require_core_relations(
-        "fct_report", "fct_report_symptom", "fct_report_vaccine",
-        "dim_symptom", "dim_vaccine", "dim_age_group", "dim_sex",
+        "fct_report",
+        "fct_report_symptom",
+        "fct_report_vaccine",
+        "dim_symptom",
+        "dim_vaccine",
+        "dim_age_group",
+        "dim_sex",
     )
     require_nonempty_core("fct_report")
 
@@ -790,7 +798,9 @@ def run_a12(
     )
     if stats.is_empty():
         if selected_symptom and selected_symptom.strip():
-            raise RuntimeError(f"No reports found for symptom '{selected_symptom}'. Check its exact name.")
+            raise RuntimeError(
+                f"No reports found for symptom '{selected_symptom}'. Check its exact name."
+            )
         raise RuntimeError("No report-symptom combinations are available for this comparison.")
 
     save_csv(stats, "12_symptom_percentage_by_group.csv")
@@ -820,21 +830,31 @@ def run_a12(
 
         if dimension == "age_group":
             age_order = ["5-11", "12-15", "16-18", "19-30", "31-50", "51-65", "66+"]
-            labels = sorted(labels, key=lambda value: age_order.index(value) if value in age_order else len(age_order))
+            labels = sorted(
+                labels,
+                key=lambda value: age_order.index(value) if value in age_order else len(age_order),
+            )
         elif dimension == "sex":
             sex_order = {"F": 0, "M": 1}
             labels = sorted(labels, key=lambda value: (sex_order.get(value, 2), value))
         elif dimension == "report_year":
-            labels = sorted(labels, key=lambda value: (not value.isdigit(), int(value) if value.isdigit() else value))
+            labels = sorted(
+                labels,
+                key=lambda value: (not value.isdigit(), int(value) if value.isdigit() else value),
+            )
         elif dimension == "dose_series":
-            labels = sorted(labels, key=lambda value: (not value.isdigit(), int(value) if value.isdigit() else value))
+            labels = sorted(
+                labels,
+                key=lambda value: (not value.isdigit(), int(value) if value.isdigit() else value),
+            )
 
         return labels + unknown[:1]
 
     ncols = 1 if len(plot_symptoms) == 1 else 2
     nrows = (len(plot_symptoms) + ncols - 1) // ncols
     fig, axes = plt.subplots(
-        nrows, ncols,
+        nrows,
+        ncols,
         figsize=(10.5 if ncols == 1 else 14.5, (6.0 if ncols == 1 else 4.4) * nrows),
         squeeze=False,
     )
@@ -889,11 +909,15 @@ def run_a12(
                 count = int(record["symptom_reports"])
                 denom = int(record["group_reports"])
                 ax.text(
-                    col_idx, row_idx, f"{pct:.1f}%\n{count:,}/{denom:,}",
-                    ha="center", va="center", fontsize=annotation_size,
+                    col_idx,
+                    row_idx,
+                    f"{pct:.1f}%\n{count:,}/{denom:,}",
+                    ha="center",
+                    va="center",
+                    fontsize=annotation_size,
                     color="white" if pct >= color_max * 0.58 else "#222222",
                 )
-    for ax in axes.flat[len(plot_symptoms):]:
+    for ax in axes.flat[len(plot_symptoms) :]:
         ax.set_visible(False)
     fig.suptitle(
         f"Symptom reporting by {group_by_x.replace('_', ' ').title()} × "
@@ -961,12 +985,17 @@ def run_a6() -> dict[str, pl.DataFrame]:
     # preserves neighborhood structure; weights remain on the binary 0..1 scale.
     grid_x = grid_y = 15
     som = MiniSom(
-        grid_x, grid_y, data.shape[1], sigma=2.0, learning_rate=0.5,
-        topology="hexagonal", neighborhood_function="gaussian", random_seed=42,
+        grid_x,
+        grid_y,
+        data.shape[1],
+        sigma=2.0,
+        learning_rate=0.5,
+        topology="hexagonal",
+        neighborhood_function="gaussian",
+        random_seed=42,
     )
     som.random_weights_init(data)
-    som.train_random(data, num_iteration=min(20_000, max(2_000, len(data) * 2)),
-                     verbose=False)
+    som.train_random(data, num_iteration=min(20_000, max(2_000, len(data) * 2)), verbose=False)
 
     weights = som.get_weights()
     hits = np.zeros((grid_x, grid_y), dtype=int)
@@ -978,29 +1007,55 @@ def run_a6() -> dict[str, pl.DataFrame]:
         neuron_y.append(y)
         distances.append(float(np.linalg.norm(row - weights[x, y])))
 
-    assignments = pl.DataFrame({
-        "report_key": binary.index.to_list(),
-        "neuron_x": neuron_x,
-        "neuron_y": neuron_y,
-        "distance_to_prototype": distances,
-    })
-    occupancy = pl.DataFrame([
-        {"neuron_x": x, "neuron_y": y, "report_count": int(hits[x, y])}
-        for x in range(grid_x) for y in range(grid_y)
-    ])
-    codebook = pl.DataFrame([
-        {"neuron_x": x, "neuron_y": y, "symptom_name": name,
-         "prototype_weight": float(weights[x, y, j]),
-         "report_count": int(hits[x, y])}
-        for x in range(grid_x) for y in range(grid_y)
-        for j, name in enumerate(names)
-    ])
-    summary = pl.DataFrame({
-        "metric": ["sample_reports", "symptoms", "grid_x", "grid_y",
-                   "occupied_neurons", "mean_quantization_error"],
-        "value": [float(len(data)), float(len(names)), float(grid_x), float(grid_y),
-                  float(np.count_nonzero(hits)), float(np.mean(distances))],
-    })
+    assignments = pl.DataFrame(
+        {
+            "report_key": binary.index.to_list(),
+            "neuron_x": neuron_x,
+            "neuron_y": neuron_y,
+            "distance_to_prototype": distances,
+        }
+    )
+    occupancy = pl.DataFrame(
+        [
+            {"neuron_x": x, "neuron_y": y, "report_count": int(hits[x, y])}
+            for x in range(grid_x)
+            for y in range(grid_y)
+        ]
+    )
+    codebook = pl.DataFrame(
+        [
+            {
+                "neuron_x": x,
+                "neuron_y": y,
+                "symptom_name": name,
+                "prototype_weight": float(weights[x, y, j]),
+                "report_count": int(hits[x, y]),
+            }
+            for x in range(grid_x)
+            for y in range(grid_y)
+            for j, name in enumerate(names)
+        ]
+    )
+    summary = pl.DataFrame(
+        {
+            "metric": [
+                "sample_reports",
+                "symptoms",
+                "grid_x",
+                "grid_y",
+                "occupied_neurons",
+                "mean_quantization_error",
+            ],
+            "value": [
+                float(len(data)),
+                float(len(names)),
+                float(grid_x),
+                float(grid_y),
+                float(np.count_nonzero(hits)),
+                float(np.mean(distances)),
+            ],
+        }
+    )
     save_csv(assignments, "06_som_report_assignments.csv")
     save_csv(occupancy, "06_som_neuron_occupancy.csv")
     save_csv(codebook, "06_som_codebook.csv")
@@ -1011,13 +1066,16 @@ def run_a6() -> dict[str, pl.DataFrame]:
     rows = int(np.ceil(len(names) / cols))
     fig = plt.figure(figsize=(16, rows * 3.2))
     grid = fig.add_gridspec(
-        rows, cols + 1, width_ratios=[1] * cols + [0.16],
-        wspace=0.12, hspace=0.22,
+        rows,
+        cols + 1,
+        width_ratios=[1] * cols + [0.16],
+        wspace=0.12,
+        hspace=0.22,
     )
-    axes = np.array([
-        [fig.add_subplot(grid[row, col]) for col in range(cols)]
-        for row in range(rows)
-    ], dtype=object)
+    axes = np.array(
+        [[fig.add_subplot(grid[row, col]) for col in range(cols)] for row in range(rows)],
+        dtype=object,
+    )
     colorbar_ax = fig.add_subplot(grid[:, cols])
     cmap = plt.get_cmap("YlOrRd")
     for j, name in enumerate(names):
@@ -1027,9 +1085,13 @@ def run_a6() -> dict[str, pl.DataFrame]:
             for y in range(grid_y):
                 center = (x + 0.5 * (y % 2), y * np.sqrt(3) / 2)
                 patch = RegularPolygon(
-                    center, numVertices=6, radius=0.49, orientation=np.pi / 6,
+                    center,
+                    numVertices=6,
+                    radius=0.49,
+                    orientation=np.pi / 6,
                     facecolor=cmap(float(np.clip(values[x, y], 0, 1))),
-                    edgecolor="white", linewidth=0.25,
+                    edgecolor="white",
+                    linewidth=0.25,
                 )
                 ax.add_patch(patch)
         ax.set_title(name, fontsize=10, pad=6)
@@ -1037,11 +1099,12 @@ def run_a6() -> dict[str, pl.DataFrame]:
         ax.set_xlim(-0.7, grid_x + 0.7)
         ax.set_ylim(-0.6, grid_y * np.sqrt(3) / 2 + 0.6)
         ax.axis("off")
-    for ax in axes.flat[len(names):]:
+    for ax in axes.flat[len(names) :]:
         ax.axis("off")
     norm = plt.Normalize(0, 1)
     fig.colorbar(
-        cm.ScalarMappable(norm=norm, cmap=cmap), cax=colorbar_ax,
+        cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=colorbar_ax,
         label="Prototype weight (0–1)",
     )
     fig.suptitle("A6 — SOM component planes", fontsize=15)
@@ -1054,17 +1117,26 @@ def run_a6() -> dict[str, pl.DataFrame]:
     for x in range(grid_x):
         for y in range(grid_y):
             center = (x + 0.5 * (y % 2), y * np.sqrt(3) / 2)
-            ax.add_patch(RegularPolygon(
-                center, numVertices=6, radius=0.49, orientation=np.pi / 6,
-                facecolor=u_cmap(float(distance_map[x, y])),
-                edgecolor="white", linewidth=0.35,
-            ))
+            ax.add_patch(
+                RegularPolygon(
+                    center,
+                    numVertices=6,
+                    radius=0.49,
+                    orientation=np.pi / 6,
+                    facecolor=u_cmap(float(distance_map[x, y])),
+                    edgecolor="white",
+                    linewidth=0.35,
+                )
+            )
     ax.set_aspect("equal")
     ax.set_xlim(-0.7, grid_x + 0.7)
     ax.set_ylim(-0.6, grid_y * np.sqrt(3) / 2 + 0.6)
     ax.axis("off")
-    fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(0, 1), cmap=u_cmap),
-                 ax=ax, label="Normalized distance to neighboring prototypes")
+    fig.colorbar(
+        cm.ScalarMappable(norm=plt.Normalize(0, 1), cmap=u_cmap),
+        ax=ax,
+        label="Normalized distance to neighboring prototypes",
+    )
     ax.set_title("A6 — SOM U-Matrix", fontsize=14, pad=12)
     _save_plot(fig, "06_som_umatrix.png")
 
@@ -1079,8 +1151,13 @@ def run_a7() -> dict[str, pl.DataFrame]:
     import matplotlib.pyplot as plt
 
     require_core_relations(
-        "fct_report", "fct_report_symptom", "fct_report_allergen",
-        "fct_report_vaccine", "dim_symptom", "dim_allergen", "dim_vaccine",
+        "fct_report",
+        "fct_report_symptom",
+        "fct_report_allergen",
+        "fct_report_vaccine",
+        "dim_symptom",
+        "dim_allergen",
+        "dim_vaccine",
     )
     require_nonempty_core("fct_report")
     allergen = query_df(
@@ -1159,7 +1236,9 @@ def run_a8() -> dict[str, pl.DataFrame]:
     import matplotlib.pyplot as plt
 
     require_core_relations(
-        "fct_report", "fct_report_symptom", "dim_symptom",
+        "fct_report",
+        "fct_report_symptom",
+        "dim_symptom",
     )
     require_nonempty_core("fct_report")
     stats = query_df(
@@ -1222,11 +1301,16 @@ def run_a8() -> dict[str, pl.DataFrame]:
             for row in stats.iter_rows(named=True)
         ]
         fig, ax = plt.subplots(figsize=(12, max(6, stats.height * 0.55)))
-        ax.bxp(box_data, vert=False, showfliers=False, patch_artist=True,
-               boxprops={"facecolor": "#8ecae6", "edgecolor": "#2563eb"},
-               medianprops={"color": "#b91c1c", "linewidth": 1.8},
-               whiskerprops={"color": "#475569"},
-               capprops={"color": "#475569"})
+        ax.bxp(
+            box_data,
+            vert=False,
+            showfliers=False,
+            patch_artist=True,
+            boxprops={"facecolor": "#8ecae6", "edgecolor": "#2563eb"},
+            medianprops={"color": "#b91c1c", "linewidth": 1.8},
+            whiskerprops={"color": "#475569"},
+            capprops={"color": "#475569"},
+        )
         ax.set_xlabel("Age (years)")
         ax.set_ylabel("Symptom")
         ax.set_title("Age distribution by symptom (top 10)", fontsize=14, pad=12)
@@ -1306,7 +1390,9 @@ def run_a9(selected_symptom: str | None = None) -> dict[str, pl.DataFrame]:
         """
     )
     if top5_stats.is_empty():
-        raise RuntimeError("Không có báo cáo nào có ngày tiêm, ngày khởi phát hợp lệ và triệu chứng.")
+        raise RuntimeError(
+            "Không có báo cáo nào có ngày tiêm, ngày khởi phát hợp lệ và triệu chứng."
+        )
 
     save_csv(top5_stats, "09_onset_delay_top5_stats.csv")
     box_data = [
@@ -1422,8 +1508,12 @@ def run_a10(
     import matplotlib.pyplot as plt
 
     require_core_relations(
-        "fct_report", "fct_report_symptom", "fct_report_vaccine",
-        "dim_symptom", "dim_vaccine", "dim_age_group",
+        "fct_report",
+        "fct_report_symptom",
+        "fct_report_vaccine",
+        "dim_symptom",
+        "dim_vaccine",
+        "dim_age_group",
     )
     require_nonempty_core("fct_report")
     if top_n <= 0:
@@ -1432,8 +1522,11 @@ def run_a10(
         raise ValueError("onset_min_days must be non-negative")
     if onset_max_days is not None and onset_max_days < 0:
         raise ValueError("onset_max_days must be non-negative")
-    if (onset_min_days is not None and onset_max_days is not None
-            and onset_min_days > onset_max_days):
+    if (
+        onset_min_days is not None
+        and onset_max_days is not None
+        and onset_min_days > onset_max_days
+    ):
         raise ValueError("onset_min_days must be <= onset_max_days")
 
     filters = []
@@ -1548,8 +1641,10 @@ def run_a10(
     ax.set_xticks(range(len(outcome_fields)), [label for _, _, label in outcome_fields])
     ax.set_yticks(
         range(stats.height),
-        [f"{row['symptom_name']} (n={row['report_denominator']:,})"
-         for row in stats.iter_rows(named=True)],
+        [
+            f"{row['symptom_name']} (n={row['report_denominator']:,})"
+            for row in stats.iter_rows(named=True)
+        ],
     )
     for row_idx, row in enumerate(stats.iter_rows(named=True)):
         denominator = row["report_denominator"]
@@ -1558,8 +1653,13 @@ def run_a10(
             count = int(row[count_col] or 0)
             text_color = "white" if pct >= 50 else "#222222"
             ax.text(
-                col_idx, row_idx, f"{pct:.1f}%\n{count}/{denominator}",
-                ha="center", va="center", color=text_color, fontsize=8,
+                col_idx,
+                row_idx,
+                f"{pct:.1f}%\n{count}/{denominator}",
+                ha="center",
+                va="center",
+                color=text_color,
+                fontsize=8,
             )
     vaccine_scope = (
         f"vaccine keyword: {vaccine_name.strip()} (partial match)"

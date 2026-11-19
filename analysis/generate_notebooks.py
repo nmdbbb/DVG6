@@ -126,7 +126,10 @@ WORKFLOWS = [
 ]
 
 workflow_names = {row[0] for row in WORKFLOWS}
-if FRONTEND_NOTEBOOKS & BACKEND_NOTEBOOKS or FRONTEND_NOTEBOOKS | BACKEND_NOTEBOOKS != workflow_names:
+if (
+    FRONTEND_NOTEBOOKS & BACKEND_NOTEBOOKS
+    or FRONTEND_NOTEBOOKS | BACKEND_NOTEBOOKS != workflow_names
+):
     raise RuntimeError("Every workflow must be assigned to exactly one notebook layer")
 
 
@@ -243,7 +246,7 @@ for filename, title, description, workflow in WORKFLOWS:
             "\n"
             "# Xem các giá trị có thể dùng trong bộ lọc\n"
             "display(query_df(\"SELECT DISTINCT dv.vax_name FROM core.dim_vaccine dv JOIN core.fct_report_vaccine rv ON rv.vaccine_key = dv.vaccine_key WHERE dv.vax_name <> 'UNKNOWN' ORDER BY 1\"))\n"
-            "display(query_df(\"SELECT age_group_label FROM core.dim_age_group ORDER BY sort_order\"))\n"
+            'display(query_df("SELECT age_group_label FROM core.dim_age_group ORDER BY sort_order"))\n'
             "\n"
             "vaccine_name = None  # từ khóa một phần, ví dụ: 'PFIZER'\n"
             "age_group = None     # ví dụ: '19-30'\n"
@@ -328,4 +331,6 @@ for filename, title, description, workflow in WORKFLOWS:
         encoding="utf-8",
     )
 
-print(f"Generated {len(FRONTEND_NOTEBOOKS)} frontend and {len(BACKEND_NOTEBOOKS)} backend notebooks in {NOTEBOOK_DIR}")
+print(
+    f"Generated {len(FRONTEND_NOTEBOOKS)} frontend and {len(BACKEND_NOTEBOOKS)} backend notebooks in {NOTEBOOK_DIR}"
+)
