@@ -7,6 +7,9 @@
 - GNU make
   - Windows: `winget install ezwinports.make` rồi mở terminal mới
   - macOS: có sẵn (Xcode CLT) · Linux: `apt install make`
+- **Đĩa trống ≥ 12 GB** và **RAM cấp cho Docker ≥ 4 GB**. Đo thực tế ở lần nghiệm thu
+  2026-11-19 (xem mục dưới): image Docker ~2 GB, `data/landing/` 302 MB, `data/raw/` 1,8 GB,
+  volume `pgdata` ~4,1 GB (`raw` 3,0 GB + `meta` 662 MB + `core` 379 MB).
 
 Không cần cài Python, Node hay Postgres trên máy: mọi thứ chạy trong container.
 
@@ -49,11 +52,62 @@ Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải
 | `make ingest` | Mọi connector → `raw` + `meta.ingestion_batch`, đường `live`; lưu bản gốc ở `data/raw/` | dòng `live success`; chạy lại thì `new_rows=0` |
 | `make ingest SOURCE_MODE=mock` | Như trên nhưng lấy từ mock_server | dòng `mock success` |
 | `make mock-check` | live rồi mock cho `source_demo`, so hai lô | in `KHỚP`, exit 0 |
-| `make transform` | `dbt run`: staging → core → analytics | `PASS=4 ERROR=0` |
+| `make transform` | `dbt run`: staging → core → analytics | `PASS=21 ERROR=0` (đủ cả VAERS; chỉ có `source_demo` thì ít hơn) |
 | `make quality` | `dbt test` + `quality/rules.yml`, ghi `meta.quality_run`, profile bảng, sinh `docs/quality_report.md` | `Quality gate passed.`, exit 0 |
 | `make test` | pytest (API trên database thật, ingestion, mock server) | `passed` |
 | `make demo-break` | Chèn một dòng mồ côi vào `core.fct_main` | `make quality` sau đó phải exit 1; `make transform` để sửa |
 | `make publish` | Đẩy `core` + `analytics` + `meta` lên kho dùng chung | in `KHỚP: N bảng, M dòng`, exit 0 |
+
+## Nghiệm thu tái tạo trên dữ liệu VAERS thật (issue #34)
+
+Số đo của lần nghiệm thu **2026-11-19**: Windows 11, Docker Desktop 29.1.3, Docker được cấp
+7,75 GB RAM, SSD, mạng gia đình. Máy khác sẽ lệch, nhưng thứ tự độ lớn giữ nguyên — dùng bảng này
+để biết một bước đang chạy bình thường hay đã treo.
+
+| Bước | Thời gian | Ghi chú |
+|---|---|---|
+| `make up` | 60 s | lần đầu build image `qtdl/python:dev`; lần sau vài giây |
+| `make landing-fetch` | 57 s | 6 file VAERS, 302 MB, từ GitHub Release |
+| `make migrate` | 2 s | 7 migration |
+| `make landing-verify` | 4 s | băm lại 302 MB |
+| `make ingest` | **17 phút** | openfda 138 s · source_demo 1 s · vaers_data 371 s · vaers_symptoms 304 s · vaers_vax 192 s |
+| `make transform` | 88 s | 21 model (15 bảng, 6 view) |
+| `make quality` | 51 s | 137 check, 0 error, 0 warning |
+| `make test` | 5 s | 65 test |
+
+Nghiệm thu chính thức — `make reset` (xóa sạch schema → migrate → ingest → transform → quality) chạy
+**947 giây ≈ 15 phút 47 giây, exit 0**. Cộng `make up` lần đầu và `make landing-fetch` thì một người
+mới clone repo mất **khoảng 18 phút** để có warehouse đầy đủ. Chạy tiếp `make all` ngay sau đó:
+**784 giây, exit 0**, và ingest báo `new_rows=0` cho cả 5 nguồn — nạp lại không nhân dòng nào, số
+dòng mọi bảng không đổi.
+
+Ingest chiếm hơn 80% thời gian đó, và chậm vì mỗi dòng raw còn lưu thêm bản ghi gốc vào `_payload`
+(JSONB) ngoài các cột text: riêng openFDA tải 990 MB phản hồi API cho 26 000 dòng.
+
+### Số dòng phải ra đúng
+
+Nạp đúng bộ file trong `sources_landing.md` thì các con số này tái tạo được nguyên vẹn:
+
+| Bảng | Số dòng |
+|---|---|
+| `raw.vaers_data` · `raw.vaers_symptoms` · `raw.vaers_vax` | 768 704 · 1 030 201 · 811 756 |
+| `raw.openfda_substances` · `raw.source_demo_records` | 26 000 · 5 000 |
+| `staging.stg_vaers__symptoms` (sau unpivot) | 3 263 884 |
+| `staging.stg_openfda__substances` | 3 885 |
+| `core.dim_symptom` · `dim_vaccine` · `dim_state` · `dim_age_group` · `dim_sex` · `dim_date` | 11 197 · 142 · 63 · 8 · 3 · 2 193 |
+| `core.fct_report_raw` | 711 058 |
+| `core.report_duplicate_map` | 23 671 |
+| `core.fct_report` | 687 387 |
+| `core.fct_report_symptom` · `core.fct_report_vaccine` | 3 062 197 · 717 541 |
+
+`raw.vaers_vax` nhận 813 432 dòng nhưng chỉ còn **811 756**: 1 676 dòng trùng y hệt trong CSV nguồn
+bị `_row_hash` khử — đúng thiết kế, không phải mất dữ liệu.
+
+**Hai bảng dị ứng thì chưa tái tạo được:** `core.dim_allergen` và `core.fct_report_allergen` phụ
+thuộc từ điển hoạt chất openFDA, mà nguồn này crawl **live** mỗi lần `make ingest` nên đổi theo
+ngày. Lần nghiệm thu này ra 1 222 và 272 636, trong khi `cleaning_log.md` hàng 14/20 ghi 1 217 và
+272 841 (lệch 5 hoạt chất và 205 cặp). Chỉ VAERS đang được ghim bằng sha256; openFDA chưa — xem
+issue #57.
 
 ## Lỗi thường gặp
 
@@ -71,6 +125,10 @@ Trang tải của CDC có CAPTCHA nên **không** tự động hóa việc tải
 | `password authentication failed for user "etl_writer"` | đổi mật khẩu trong `.env` sau khi đã migrate | `make migrate` (cập nhật lại mật khẩu role) |
 | `relation "core.fct_main" does not exist` khi quality | chưa transform | `make transform` |
 | `QUALITY GATE FAILED` | có check `error` fail | đọc `docs/quality_report.md` hoặc trang Pipeline health; sửa dữ liệu/model, không nới ngưỡng nếu chưa ghi `decision_log.md` |
+| `make transform` đứng hàng chục phút ở một model `core` (gặp thật ở `report_duplicate_map`) | bảng vừa được dbt tạo chưa có thống kê, planner tưởng bảng rỗng và chọn kế hoạch sai; autovacuum chạy sau cũng không lập lại kế hoạch | kiểm `+post-hook: "analyze {{ this }}"` còn trong `transform/dbt_project.yml` mục `core` (decision #43). Đo thực tế: thiếu dòng này 73 phút chưa xong, có thì 10,6 giây |
+| Số dòng `dim_allergen` / `fct_report_allergen` lệch `cleaning_log.md` | từ điển openFDA crawl live nên đổi theo ngày | bình thường, không phải lỗi; xem mục nghiệm thu ở trên và issue #57 |
+| Đĩa đầy giữa `make ingest` | một vòng đầy cần ~12 GB (xem Yêu cầu máy) | dọn chỗ rồi `make reset`; `docker builder prune` lấy lại được vài GB cache build |
+| `du` của `data/raw/` phình sau nhiều lần ingest | mỗi lô live lưu một snapshot mới, snapshot cũ giữ nguyên làm bằng chứng | xóa tay thư mục lô cũ trong `data/raw/<nguồn>/<ngày>/`; đừng xóa lô đang được mock phát lại |
 | Dashboard trắng / lỗi API | api chưa chạy | `make dashboard`, `make logs` để xem log |
 
 ## Thao tác khác

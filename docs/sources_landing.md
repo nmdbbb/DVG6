@@ -1,7 +1,9 @@
 # Nhật ký file tải tay (landing)
 
-> Mỗi file nguồn tải tay một dòng. Hiện ghi thủ công từ kết quả `python -m ingestion.inspect_vaers`; `make landing-register` chưa được triển khai.
+> Mỗi file nguồn tải tay một dòng, ghi bằng `make landing-register SOURCE=<nguồn>` (đừng sửa tay).
 > Thư mục `data/` không commit, nên bảng này là bằng chứng duy nhất trong repo về việc nhóm đã dùng chính xác file nào.
+> Đây cũng là **sổ duy nhất** giữ sha256: `make landing-verify`, `make landing-fetch` và connector
+> `vaers_*` đều đọc chính bảng này (decision #41), nên định dạng bảng phải giữ đúng 7 cột.
 
 Ai cần dựng lại warehouse phải tải đúng file có sha256 trùng bảng dưới. sha256 lệch nghĩa là nguồn đã đổi dữ liệu — khi đó thêm dòng mới, **không sửa dòng cũ**, và ghi một dòng vào `decision_log.md`.
 
