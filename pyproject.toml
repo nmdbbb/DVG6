@@ -37,6 +37,10 @@ select = ["E", "F", "I", "B", "UP"]
 # Độ dài dòng do black lo; chuỗi SQL/tiếng Việt được phép dài hơn.
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# Notebook sinh từ analysis/generate_notebooks.py: import đặt giữa cell là chủ ý, không sắp lại.
+"*.ipynb" = ["E402", "F401", "I001"]
+
 [tool.ruff.lint.flake8-bugbear]
 # Idiom của FastAPI: Depends()/Query() làm giá trị mặc định là đúng.
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]

@@ -23,9 +23,10 @@ Danh sách vai trò và yêu cầu dashboard theo thời gian nằm trong
 Các workflow top-N giữ quy tắc chọn top-N đã ghi trong notebook; triệu chứng COVID-19
 được giữ trong tập ứng viên và xuất hiện nếu đạt thứ hạng. A0 không chọn danh sách triệu chứng.
 
-Decision log hiện ghi phạm vi dự kiến từ năm 2021 đến hiện tại (2026; năm 2026 là
-năm chưa đủ). Các workflow notebook không tự lọc cứng theo năm: chúng phân tích những
-dòng hiện diện trong core và báo khoảng ngày ở notebook overview.
+Phạm vi nghiên cứu theo decision #28 và #42 vẫn là năm 2021; `fct_report_raw` đang lọc cứng
+2021. Các workflow notebook không tự lọc theo năm: chúng phân tích những dòng hiện diện trong
+core và báo khoảng ngày ở notebook overview. Nếu core được mở rộng sang năm khác thì phải ghi
+decision_log trước, và cột "năm" trong A3/A12 mới có nghĩa.
 
 ## Cách chuẩn bị và chạy
 

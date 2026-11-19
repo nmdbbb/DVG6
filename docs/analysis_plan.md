@@ -44,6 +44,8 @@ Nhóm **không chạy lại bằng R**. Notebook Python đọc warehouse bằng 
 
 **A6 dùng SOM thuần.** Component planes và U-Matrix là biểu diễn khám phá cấu trúc báo cáo; chúng không thay thế kiểm định thống kê hoặc các chỉ số ARM.
 
+**Chưa có notebook cho câu hỏi Q5 (so sánh dữ liệu thô và đã làm sạch, "7% variations" của bài báo).** Hàng A8 cũ đã được thay bằng phân bố tuổi theo triệu chứng; Q5 vẫn thuộc issue #29 và cần một notebook riêng đọc `core.fct_report_raw` so với `core.fct_report`.
+
 A1-A12 keep COVID-19-related symptom entries eligible for analysis; a top-N workflow includes them when they rank within its selected N.
 
 ## 3. Quy tắc bắt buộc với phân tích
@@ -76,7 +78,7 @@ Bài báo dùng phương pháp xác suất của một nghiên cứu khác và k
 
 Định nghĩa chính xác (Transform cài đặt đúng từng chữ):
 
-1. **Phạm vi so sánh:** chỉ các báo cáo đã qua bộ lọc của [data_contract.md §1](data_contract.md) (COVID19, trong nước) và có ít nhất một triệu chứng.
+1. **Phạm vi so sánh:** chỉ các báo cáo đã qua bộ lọc của [data_contract.md §1](data_contract.md) (2021, COVID19, trong nước, decision #28/#42) và có ít nhất một triệu chứng.
 2. **Tập triệu chứng** = các `symptom_key` khác nhau của báo cáo, sau chuẩn hóa chính tả (`vaccination site` → `injection site`), so sánh nguyên tập; khác một phần tử là không trùng. **Tập nhà sản xuất** = các nhà sản xuất khác nhau trong dòng vắc xin COVID19 của báo cáo, so sánh nguyên tập.
 3. **Điều kiện đủ để xét trùng:** `age_group`, `sex` và `vax_date` đều đã biết. Báo cáo thiếu một trong ba **không bao giờ bị đánh dấu trùng** (thiếu thông tin thì không đủ bằng chứng để gộp, và coi UNKNOWN = UNKNOWN sẽ gộp nhầm hàng loạt). `state` không bắt buộc: hai báo cáo cùng `state = UNKNOWN` được coi là cùng giá trị.
 4. **Giữ lại:** trong mỗi nhóm trùng, giữ báo cáo có `VAERS_ID` nhỏ nhất, so sánh **như số nguyên** (không so chuỗi).

@@ -51,6 +51,7 @@ def run_overview() -> dict[str, pl.DataFrame]:
     for table in relations["table_name"].to_list():
         # table comes from information_schema, quoted as an identifier.
         from psycopg import sql
+
         from analysis.notebook_utils import connect
 
         with connect() as conn:
@@ -706,8 +707,9 @@ def run_a12(
     top_n: int = 10,
 ) -> dict[str, pl.DataFrame]:
     """Compare report-level symptom percentages across two selected dimensions."""
-    import matplotlib.pyplot as plt
     from textwrap import fill
+
+    import matplotlib.pyplot as plt
 
     dimensions = {
         "product": "COALESCE(NULLIF(BTRIM(dv.vax_name), ''), 'UNKNOWN')",
@@ -839,7 +841,7 @@ def run_a12(
     visible_max = float(frame["symptom_pct"].max())
     color_max = min(100.0, max(10.0, float(np.ceil(visible_max / 10.0) * 10.0)))
     images = []
-    for ax, symptom in zip(axes.flat, plot_symptoms):
+    for ax, symptom in zip(axes.flat, plot_symptoms, strict=False):
         data = frame[frame["symptom_name"] == symptom]
         x_labels = visible_groups(data, "group_x")
         y_labels = visible_groups(data, "group_y")
