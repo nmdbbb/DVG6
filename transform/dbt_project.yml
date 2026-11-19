@@ -22,6 +22,12 @@ models:
     core:
       +schema: core
       +materialized: table
+      # Thống kê ngay sau khi tạo bảng, trước khi model phía sau lập kế hoạch truy vấn.
+      # Không có dòng này, model phía sau có thể được lập kế hoạch khi bảng vừa tạo còn
+      # chưa có thống kê (autovacuum chạy sau vài chục giây): planner tưởng bảng rỗng và
+      # chọn kế hoạch sai. Đo thực tế trên VAERS 2021: report_duplicate_map 73 phút chưa
+      # xong khi thiếu thống kê, 11 giây khi đã có (decision #43).
+      +post-hook: "analyze {{ this }}"
     analytics:
       +schema: analytics
       +materialized: view
