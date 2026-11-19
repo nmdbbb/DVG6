@@ -6,6 +6,39 @@ Giữ nguyên framework một connector → một bảng; không sửa loader ha
 
 ## Kiểm tra local, không cần Docker
 
+### Chọn năm 2021–2026
+
+Manifest `ingestion/sources/vaers_landing.json` đăng ký riêng đường dẫn và SHA-256
+cho sáu ZIP 2021–2026. Mặc định vẫn là 2021. Ví dụ preview năm 2022:
+
+```powershell
+python -m ingestion.sources.vaers --year 2022 --limit 10
+```
+
+Lặp lại với `--year 2023` đến `--year 2026`. Không ghi database khi preview.
+Nếu cần nạp PostgreSQL local theo luồng cũ, truyền năm vào container:
+
+```powershell
+docker compose run --rm --no-deps -e VAERS_YEAR=2022 etl python -m ingestion.cli run --source vaers_data --endpoint live --limit 100
+```
+
+Lặp với `vaers_symptoms` và `vaers_vax`. Ba bảng raw hiện có nhận thêm bản ghi,
+không tạo bảng theo năm; đây không phải thao tác làm sạch. Không thêm cột năm giả
+vào bản ghi nguồn hoặc thay đổi cách tính hash cũ. `_source_name` vẫn là tên
+connector; nguồn ZIP/năm nằm trong URL trang của manifest snapshot và mô tả nguồn
+tại thời điểm chạy. Chưa có cột năm file riêng trong raw để truy vấn độc lập.
+
+**Mock chỉ phát snapshot hoàn chỉnh mới nhất của mỗi connector**, không gộp các
+lần nạp năm khác nhau. Nếu chuyển năm, lần live/mock đối chiếu phải dùng đúng
+snapshot đó; biến `VAERS_YEAR` không chọn lại một snapshot mock cũ.
+
+Theo cách bàn giao của nhóm, các ZIP gốc cần được upload riêng lên Release
+`landing`, với tên `vaers__2026-10-15__2022VAERSData.zip` (tương tự 2023–2026).
+Checksum nằm trong nhật ký nguồn. Các file mới dùng thư mục cũ theo lựa chọn của
+người dùng; `2026-10-15` trong đường dẫn không xác nhận ngày tải thực tế.
+Năm 2026 chưa phải dữ liệu trọn năm tại ngày đăng ký 2026-10-26.
+Việc hỗ trợ đọc thêm năm không tự thay đổi phạm vi nghiên cứu của nhóm.
+
 Chạy từ thư mục repo, với Python và thư viện `httpx` đã cài:
 
 ```powershell

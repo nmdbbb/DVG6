@@ -1,4 +1,4 @@
-"""Ba connector VAERS dùng chung một ZIP đã tải tay và đăng ký checksum.
+"""Ba connector VAERS chọn ZIP theo năm, đã tải tay và đăng ký checksum.
 
 Live đọc ZIP local; mock dùng HTML của mock_server hiện có. Không cần Docker
 để chạy preview: python -m ingestion.sources.vaers --limit 10
@@ -38,6 +38,13 @@ class VaersCSV(Connector):
     ):
         manifest_path = Path(os.environ.get("VAERS_MANIFEST", DEFAULT_MANIFEST))
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        # Vẫn đọc được manifest một năm cũ; mặc định 2021 để không đổi phạm vi ngầm.
+        datasets = manifest.get("datasets", [manifest])
+        selected_year = year if year is not None else int(os.environ.get("VAERS_YEAR", "2021"))
+        matches = [item for item in datasets if item["year"] == selected_year]
+        if len(matches) != 1:
+            raise ValueError(f"Expected one registered VAERS ZIP for year {selected_year}")
+        manifest = matches[0]
         self.zip_path = Path(zip_path) if zip_path is not None else REPO_ROOT / manifest["path"]
         self.expected_sha256 = expected_sha256 or manifest["sha256"]
         self.year = year if year is not None else manifest["year"]
@@ -215,14 +222,18 @@ VAERS_CONNECTORS = (VaersData, VaersSymptoms, VaersVax)
 def main() -> None:
     parser = argparse.ArgumentParser(description="Preview VAERS locally without database writes")
     parser.add_argument("--limit", type=int, default=10)
+    parser.add_argument("--year", type=int, help="Registered year; default VAERS_YEAR or 2021")
     args = parser.parse_args()
     if args.limit <= 0:
         parser.error("--limit must be positive")
     for cls in VAERS_CONNECTORS:
-        connector = cls()
+        connector = cls(year=args.year)
         rows = (row for page in connector.fetch_live(None) for row in connector.parse(page))
         count = sum(1 for _ in islice(rows, args.limit))
-        print(f"{connector.name}: checksum OK, parsed {count} records -> {connector.raw_table}")
+        print(
+            f"{connector.name} year={connector.year}: checksum OK, "
+            f"parsed {count} records -> {connector.raw_table}"
+        )
 
 
 if __name__ == "__main__":

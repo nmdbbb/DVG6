@@ -122,8 +122,14 @@ make publish DRY_RUN=1   # xem sẽ đẩy bảng nào, bao nhiêu dòng — kh�
 make publish             # đẩy thật
 ```
 
-Publish dữ liệu chưa qua quality gate là đưa số sai cho cả nhóm. Lệnh không tự kiểm điều này —
-đây là kỷ luật của người chạy.
+Publish dữ liệu chưa qua quality gate là đưa số sai cho cả nhóm, nên **lệnh tự từ chối** khi:
+
+- chưa từng chạy `make quality`;
+- lần chạy quality gần nhất có check `severity = error` fail;
+- đã nạp lô mới sau lần chạy quality đó (số liệu sắp đẩy lên chưa được kiểm).
+
+`make publish DRY_RUN=1` vẫn in kế hoạch và báo trước là sẽ bị chặn hay không. Có cờ
+`--skip-quality-gate` cho tình huống sự cố, nhưng dùng nó phải ghi một dòng vào `decision_log.md`.
 
 Lệnh làm bốn việc: `pg_dump` ba schema từ local, xóa ba schema cũ trên kho chung, nạp bản mới, cấp
 lại quyền cho `analyst` và `api_reader`. Xong thì **tự so số dòng từng bảng hai bên** và exit 1 nếu
