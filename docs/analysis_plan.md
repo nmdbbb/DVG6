@@ -1,8 +1,10 @@
-# Kế hoạch phân tích — tái lập và mở rộng Flora et al. (2022)
+﻿# Kế hoạch phân tích — tái lập và mở rộng Flora et al. (2022)
 
 Chủ: Analysis Lead & Quality Owner. Người thực hiện: Analysis & Visualization.
 
-Tài liệu này dịch bài báo thành việc cụ thể trong repo: mỗi phân tích của bài báo tương ứng một notebook, một view `analytics`, và một biểu đồ trên dashboard. Bối cảnh và câu hỏi nghiên cứu: [business_case.md](business_case.md).
+Tài liệu này ánh xạ các câu hỏi phân tích vào notebook và đầu ra dự kiến. Chia sẻ vai trò notebook, hợp đồng visualization/model và đặc tả dashboard theo thời gian được mô tả trong [dashboard_analysis_contract.md](dashboard_analysis_contract.md). Bối cảnh và câu hỏi nghiên cứu: [business_case.md](business_case.md).
+
+**Trạng thái triển khai:** notebook hiện đọc `core`, lưu artifact CSV/PNG cục bộ và chưa ghi vào `analytics`. Các view/API dashboard trong bảng dưới là đầu ra mục tiêu, không có nghĩa tất cả đã tồn tại. Dashboard production không chạy notebook; Transform/API cần cung cấp model và endpoint có phiên bản, mẫu số, `as_of` và lineage.
 
 ## 1. Bài báo làm gì
 
@@ -23,27 +25,35 @@ Công cụ bài báo dùng: R `arules` 1.7-3 (ARM), `kohonen` 3.0.11 (SOM), `hcl
 
 ## 2. Nhóm làm gì
 
-Nhóm **không chạy lại bằng R**. Mọi phân tích đọc từ `core`/`analytics` trong warehouse bằng Python, kết quả ghi ngược vào bảng để API phục vụ — không có con số nào chỉ tồn tại trong notebook ([data_contract.md §6](data_contract.md)).
+Nhóm **không chạy lại bằng R**. Notebook Python đọc warehouse bằng role `analyst`; artifact notebook là để tái tạo phân tích và rà soát. Khi kết quả được dùng trong dashboard, chúng phải được materialize thành model `analytics` có kiểm soát và phục vụ qua API read-only, không để API phụ thuộc vào file notebook hoặc CSV/PNG cục bộ.
 
-| # | Phân tích | Hình/bảng gốc | Notebook | View phục vụ | Thư viện |
+| # | Phân tích | Hình/bảng gốc | Notebook | Đầu ra hiện tại / đích analytics | Thư viện |
 |---|---|---|---|---|---|
-| A1 | Tần suất 20 triệu chứng hàng đầu theo nhà sản xuất | Table 1, Figure 1a | `01_eda_frequency.ipynb` | `v_ae_frequency_by_vaccine` | polars |
-| A2 | Tần suất theo nhóm tuổi × giới tính (heatmap) | Table 2, Figure 1b | `02_age_sex_heatmap.ipynb` | `v_ae_by_age_sex` | polars |
-| A3 | Kiểm định chi-square triệu chứng × giới, triệu chứng × nhóm tuổi | p-value trong §2 | `03_chi_square.ipynb` | `v_ae_significance` | scipy.stats |
-| A4 | Phân cụm phân cấp triệu chứng × nhóm tuổi | Figure 2 | `04_clustering.ipynb` | `v_ae_cluster` | scipy.cluster.hierarchy |
-| A5 | Association rule mining giữa các triệu chứng | Table 3, Table 4 | `05_arm.ipynb` | `v_ae_association_rules` | mlxtend (apriori + association_rules) |
-| A6 | PCA / SOM trên ma trận báo cáo × triệu chứng | Figure 4 | `06_pca_som.ipynb` | `v_ae_component` | scikit-learn (PCA), minisom (tùy chọn) |
-| A7 | Bipartite graph: dị ứng ↔ triệu chứng, nhà sản xuất ↔ triệu chứng | Figure 5 | `07_bipartite.ipynb` | `v_ae_allergen_link` | ECharts (vẽ ở frontend) |
-| A8 | **So sánh dữ liệu thô và dữ liệu đã làm sạch** | §2, "7% variations" | `08_cleaning_impact.ipynb` | `v_cleaning_impact` | polars, scipy (Spearman) |
+| A1 | Tần suất 10 triệu chứng hàng đầu theo nhà sản xuất | Table 1, Figure 1a | `frontend/01_eda_frequency.ipynb` | `v_ae_frequency_by_vaccine` | polars |
+| A2 | Tần suất theo nhóm tuổi × giới tính (heatmap) | Table 2, Figure 1b | `backend/02_age_sex_heatmap.ipynb` | `v_ae_by_age_sex` | polars |
+| A3 | Kiểm định độc lập symptom profile với nhà sản xuất/năm/nhóm tuổi/giới | Chi-square, p hiệu chỉnh Bonferroni, Cramer's V | `backend/03_correlation_all_symptoms.ipynb` | Bốn bảng chéo và kết quả kiểm định trong `analysis/reports/tables/` | scipy.stats.chi2_contingency |
+| A4 | Phân cụm phân cấp triệu chứng × nhóm tuổi | Figure 2 | `backend/04_clustering.ipynb` | `v_ae_cluster` | scipy.cluster.hierarchy |
+| A5 | Association rule mining giữa các triệu chứng | Table 3, Table 4 | `backend/05_arm.ipynb` | `v_ae_association_rules` | mlxtend (apriori + association_rules) |
+| A6 | SOM trên ma trận báo cáo × triệu chứng | Figure 4 | `backend/06_som.ipynb` | `v_ae_component` | MiniSom |
+| A7 | Bipartite graph: dị ứng ↔ triệu chứng, nhà sản xuất ↔ triệu chứng | Figure 5 | `backend/07_bipartite.ipynb` | `v_ae_allergen_link` | ECharts (vẽ ở frontend) |
+| A8 | **Phân bố độ tuổi theo triệu chứng** | So sánh phân bố tuổi giữa các triệu chứng | `backend/08_cleaning_impact.ipynb` | `core.fct_report` + `core.fct_report_symptom` | PostgreSQL percentile, matplotlib box plot |
+| A9 | **Thời gian từ tiêm đến khởi phát** | Phân bố ngày từ `VAX_DATE` đến `ONSET_DATE`; top 5 mặc định, histogram theo symptom được chọn | `frontend/09_onset_timing.ipynb` | `core.fct_report`, `core.fct_report_symptom`, `core.dim_symptom` | PostgreSQL percentile, matplotlib |
+| A10 | **Cờ outcome nghiêm trọng theo symptom** | Số report và % report có cờ theo top symptom hoặc symptom chọn; lọc product/age/onset | `frontend/10_outcomes_by_symptom.ipynb` | `core.fct_report`, `core.fct_report_symptom`, `core.fct_report_vaccine`, dimensions | PostgreSQL aggregate, matplotlib heatmap |
+| A11 | Symptom co-occurrence across reports | Pair counts, support, P(B|A), P(A|B), lift; co-occurrence and lift heatmaps | `frontend/11_symptom_cooccurrence.ipynb` | `11_symptom_cooccurrence_pairs.csv`, `11_symptom_cooccurrence_heatmaps.png` | PostgreSQL aggregation, pandas, matplotlib |
+| A12 | Symptom reporting by product/manufacturer/dose series/age/sex/year | Group report count, symptom report count, percent; subgroup `n` shown and unknown retained | `frontend/12_symptom_by_group.ipynb` | `12_symptom_percentage_by_group.csv`, `12_symptom_percentage_by_group.png` | PostgreSQL aggregation, pandas, matplotlib |
 
-**SOM là tùy chọn.** Nếu thiếu thời gian thì dùng PCA — vừa nằm trong chương trình môn học, vừa dễ giải thích hơn. Ghi quyết định vào [decision_log.md](decision_log.md).
+**A6 dùng SOM thuần.** Component planes và U-Matrix là biểu diễn khám phá cấu trúc báo cáo; chúng không thay thế kiểm định thống kê hoặc các chỉ số ARM.
+
+**Chưa có notebook cho câu hỏi Q5 (so sánh dữ liệu thô và đã làm sạch, "7% variations" của bài báo).** Hàng A8 cũ đã được thay bằng phân bố tuổi theo triệu chứng; Q5 vẫn thuộc issue #29 và cần một notebook riêng đọc `core.fct_report_raw` so với `core.fct_report`.
+
+A1-A12 keep COVID-19-related symptom entries eligible for analysis; a top-N workflow includes them when they rank within its selected N.
 
 ## 3. Quy tắc bắt buộc với phân tích
 
-1. **Ngưỡng ghi trước.** Support, confidence, lift của ARM và mức ý nghĩa α phải ghi vào notebook **trước** khi chạy. Điểm khởi đầu đề xuất: `min_support = 0.01`, `min_confidence = 0.5`, giữ luật có `lift > 1`. Bài báo công bố các luật có support 0,011–0,028 và lift 3,3–18,8 nên ngưỡng này cho ra lượng luật tương đương.
-2. **Đa kiểm định.** A3 chạy hàng trăm kiểm định (20 triệu chứng × 7 nhóm tuổi × 2 giới). Phải hiệu chỉnh Benjamini-Hochberg và báo cả p thô lẫn p hiệu chỉnh.
+1. **Ngưỡng ghi trước.** Support, confidence và lift của ARM phải ghi vào notebook **trước** khi chạy. Điểm khởi đầu đề xuất: `min_support = 0.01`, `min_confidence = 0.5`, giữ luật có `lift > 1`. Bài báo công bố các luật có support 0,011–0,028 và lift 3,3–18,8 nên ngưỡng này cho ra lượng luật tương đương.
+2. **Diễn giải kiểm định.** A3 kiểm định độc lập tổng thể giữa hồ sơ triệu chứng tạo từ top 10 triệu chứng với nhà sản xuất, năm, nhóm tuổi và giới. UNKNOWN age/gender bị loại ở hai kiểm định tương ứng. Hồ sơ xuất hiện dưới 5 báo cáo được gộp để giảm bảng thưa; xem số ô có tần suất kỳ vọng dưới 5 trước khi diễn giải Chi-square. Kết quả không đo nguy cơ và không chứng minh quan hệ nhân quả.
 3. **Mọi notebook chạy lại được từ đầu.** Đọc bằng role `analyst`, không đọc file rời, không có ô nào phụ thuộc trạng thái ô trước đó đã bị xóa. Kernel restart + run all phải ra cùng kết quả.
-4. **Kết quả ghi vào bảng.** Mỗi notebook ghi vào một bảng trong `analytics` kèm cột `run_id` và `as_of`, để dashboard và báo cáo lấy cùng một con số.
+4. **Kết quả dashboard có snapshot.** Trước khi một phân tích được đưa lên dashboard, model phục vụ cần lưu `run_id`/`snapshot_id`, `as_of`, phiên bản phân tích, cửa sổ thời gian, bộ lọc, metric/group key, value, denominator, batch nguồn và transform/quality run để tái tạo cùng một con số và giải thích delta.
 5. **Không kết luận nhân quả.** Dùng "được báo cáo nhiều hơn", không dùng "gây ra". Người duyệt (Analysis Lead) chặn PR vi phạm.
 
 ## 4. Đối chiếu với bài báo
@@ -68,7 +78,7 @@ Bài báo dùng phương pháp xác suất của một nghiên cứu khác và k
 
 Định nghĩa chính xác (Transform cài đặt đúng từng chữ):
 
-1. **Phạm vi so sánh:** chỉ các báo cáo đã qua bộ lọc của [data_contract.md §1](data_contract.md) (2021, COVID19, trong nước) và có ít nhất một triệu chứng.
+1. **Phạm vi so sánh:** chỉ các báo cáo đã qua bộ lọc của [data_contract.md §1](data_contract.md) (2021, COVID19, trong nước, decision #28/#42) và có ít nhất một triệu chứng.
 2. **Tập triệu chứng** = các `symptom_key` khác nhau của báo cáo, sau chuẩn hóa chính tả (`vaccination site` → `injection site`), so sánh nguyên tập; khác một phần tử là không trùng. **Tập nhà sản xuất** = các nhà sản xuất khác nhau trong dòng vắc xin COVID19 của báo cáo, so sánh nguyên tập.
 3. **Điều kiện đủ để xét trùng:** `age_group`, `sex` và `vax_date` đều đã biết. Báo cáo thiếu một trong ba **không bao giờ bị đánh dấu trùng** (thiếu thông tin thì không đủ bằng chứng để gộp, và coi UNKNOWN = UNKNOWN sẽ gộp nhầm hàng loạt). `state` không bắt buộc: hai báo cáo cùng `state = UNKNOWN` được coi là cùng giá trị.
 4. **Giữ lại:** trong mỗi nhóm trùng, giữ báo cáo có `VAERS_ID` nhỏ nhất, so sánh **như số nguyên** (không so chuỗi).
