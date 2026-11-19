@@ -2,7 +2,6 @@ import csv
 import hashlib
 import html
 import io
-import json
 import re
 import zipfile
 from datetime import date
@@ -12,7 +11,9 @@ import pytest
 
 from ingestion import registry
 from ingestion.base import RawPage
+from ingestion.sources import vaers
 from ingestion.sources.vaers import VAERS_CONNECTORS, VaersData
+from scripts import landing
 
 
 def make_zip(tmp_path, cls=VaersData, *, header=None, rows=None):
@@ -108,32 +109,55 @@ def test_empty_csv_has_header_snapshot(tmp_path):
     assert list(connector.parse(pages[0])) == []
 
 
+def write_landing_doc(path, rows):
+    lines = [
+        "| # | Nguồn | File | Ngày tải | Người tải | Kích thước | sha256 |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for n, (source, file, sha) in enumerate(rows, start=1):
+        lines.append(f"| {n} | {source} | `{file}` | 2026-10-15 | x | 1 bytes | `{sha}` |")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def test_year_selection_uses_matching_path_and_checksum(tmp_path, monkeypatch):
-    manifest = tmp_path / "manifest.json"
-    datasets = [
-        {"year": year, "path": f"{year}.zip", "sha256": str(year), "encoding": "cp1252"}
+    doc = tmp_path / "sources_landing.md"
+    rows = [
+        ("vaers", f"data/landing/vaers/d/{year}VAERSData.zip", f"{year % 10}" * 64)
         for year in (2021, 2022, 2026)
     ]
-    manifest.write_text(json.dumps({"datasets": datasets}), encoding="utf-8")
-    monkeypatch.setenv("VAERS_MANIFEST", str(manifest))
+    write_landing_doc(doc, rows)
+    monkeypatch.setattr(vaers, "LANDING_DOC", doc)
     monkeypatch.delenv("VAERS_YEAR", raising=False)
     assert VaersData().year == 2021
     monkeypatch.setenv("VAERS_YEAR", "2022")
     connector = VaersData()
     assert connector.year == 2022
-    assert connector.zip_path.name == "2022.zip"
-    assert connector.expected_sha256 == "2022"
+    assert connector.zip_path.name == "2022VAERSData.zip"
+    assert connector.expected_sha256 == "2" * 64
     assert VaersData(year=2026).year == 2026
     with pytest.raises(ValueError, match="registered"):
         VaersData(year=2020)
 
 
-def test_legacy_manifest_still_supported(tmp_path, monkeypatch):
-    manifest = tmp_path / "legacy.json"
-    manifest.write_text(
-        json.dumps({"year": 2021, "path": "old.zip", "sha256": "abc", "encoding": "cp1252"}),
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("VAERS_MANIFEST", str(manifest))
-    monkeypatch.delenv("VAERS_YEAR", raising=False)
-    assert VaersData().zip_path.name == "old.zip"
+def test_reregistered_file_uses_latest_row(tmp_path, monkeypatch):
+    doc = tmp_path / "sources_landing.md"
+    file = "data/landing/vaers/d/2021VAERSData.zip"
+    write_landing_doc(doc, [("vaers", file, "a" * 64), ("vaers", file, "b" * 64)])
+    monkeypatch.setattr(vaers, "LANDING_DOC", doc)
+    assert VaersData(year=2021).expected_sha256 == "b" * 64
+
+
+def test_connector_and_landing_verify_share_one_registry(tmp_path, monkeypatch):
+    # Sửa sha256 ở sổ duy nhất thì cả connector lẫn `landing verify` đều báo lệch.
+    zip_file = tmp_path / "data/landing/vaers/d/2021VAERSData.zip"
+    zip_file.parent.mkdir(parents=True)
+    with zipfile.ZipFile(zip_file, "w") as archive:
+        archive.writestr("2021VAERSDATA.csv", ",".join(VaersData.columns) + "\n")
+    doc = tmp_path / "sources_landing.md"
+    write_landing_doc(doc, [("vaers", "data/landing/vaers/d/2021VAERSData.zip", "0" * 64)])
+    monkeypatch.setattr(vaers, "LANDING_DOC", doc)
+    monkeypatch.setattr(vaers, "REPO_ROOT", tmp_path)
+
+    assert landing.verify(doc, tmp_path)
+    with pytest.raises(ValueError, match="sha256 mismatch"):
+        list(VaersData(year=2021).fetch_live(None))

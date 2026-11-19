@@ -10,7 +10,6 @@ import argparse
 import csv
 import hashlib
 import io
-import json
 import os
 import zipfile
 from collections.abc import Iterator
@@ -19,9 +18,28 @@ from itertools import islice
 from pathlib import Path
 
 from ingestion.base import Connector, RawPage, SourceMeta
+from scripts.landing import LANDING_DOC, parse_rows
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MANIFEST = Path(__file__).with_name("vaers_landing.json")
+# CSV của VAERS là Windows-1252; không đoán và không thay ký tự lỗi khi decode.
+ENCODING = "cp1252"
+
+
+def registered_zip(year: int) -> tuple[str, str]:
+    """(đường dẫn, sha256) của ZIP năm `year` trong docs/sources_landing.md — sổ duy nhất.
+
+    File đổi nội dung thì sổ có thêm dòng mới; lấy dòng cuối (số thứ tự lớn nhất).
+    """
+    name = f"{year}VAERSData.zip"
+    rows = [
+        r
+        for r in parse_rows(LANDING_DOC)
+        if r["source"] == "vaers" and Path(r["path"]).name == name
+    ]
+    if not rows:
+        raise ValueError(f"Expected one registered VAERS ZIP for year {year}")
+    latest = max(rows, key=lambda r: r["n"])
+    return latest["path"], latest["sha256"]
 
 
 class VaersCSV(Connector):
@@ -36,19 +54,12 @@ class VaersCSV(Connector):
         encoding: str | None = None,
         page_size: int = 1000,
     ):
-        manifest_path = Path(os.environ.get("VAERS_MANIFEST", DEFAULT_MANIFEST))
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        # Vẫn đọc được manifest một năm cũ; mặc định 2021 để không đổi phạm vi ngầm.
-        datasets = manifest.get("datasets", [manifest])
-        selected_year = year if year is not None else int(os.environ.get("VAERS_YEAR", "2021"))
-        matches = [item for item in datasets if item["year"] == selected_year]
-        if len(matches) != 1:
-            raise ValueError(f"Expected one registered VAERS ZIP for year {selected_year}")
-        manifest = matches[0]
-        self.zip_path = Path(zip_path) if zip_path is not None else REPO_ROOT / manifest["path"]
-        self.expected_sha256 = expected_sha256 or manifest["sha256"]
-        self.year = year if year is not None else manifest["year"]
-        self.encoding = encoding or manifest["encoding"]
+        self.year = year if year is not None else int(os.environ.get("VAERS_YEAR", "2021"))
+        if zip_path is None or expected_sha256 is None:
+            path, sha256 = registered_zip(self.year)
+        self.zip_path = Path(zip_path) if zip_path is not None else REPO_ROOT / path
+        self.expected_sha256 = expected_sha256 or sha256
+        self.encoding = encoding or ENCODING
         if page_size <= 0:
             raise ValueError("page_size must be positive")
         self.page_size = page_size
